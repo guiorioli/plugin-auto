@@ -384,7 +384,8 @@ async function main() {
       // Verbose helpers (default: on; PLUGIN_AUTO_QUIET=1 disables)
       const preview = (n) => cmd ? cmd.substring(0, n) : toolName;
       const vAllow  = () => verbose ? `[plugin-auto] ✓ allow — ${preview(70)}` : undefined;
-      const vAsk    = () => verbose ? `[plugin-auto] ⚠ ask — ${preview(70)}`   : undefined;
+      const vAsk    = () => verbose ? `[plugin-auto] ⚠ ask   — ${preview(70)}`   : undefined;
+      const vDeny   = () => verbose ? `[plugin-auto] ⛔ deny  — ${preview(70)}`   : undefined;
 
       if (decision === 'allow') {
         process.stdout.write(buildOutput('allow', vAllow()) + '\n');
@@ -394,16 +395,16 @@ async function main() {
 
         if (verdict === 'safe') {
           process.stdout.write(
-            buildOutput('allow', '[plugin-auto] Destructive pattern detected, but AI evaluated as safe in context') + '\n'
+            buildOutput('allow', `[plugin-auto] ✓ allow — AI override: destructive pattern evaluated as safe`) + '\n'
           );
         } else {
           // Override available — default is to deny
           process.stdout.write(
             buildOutput('ask',
-              `⛔ BLOCKED — destructive pattern detected\n` +
-              `Command: ${cmd.substring(0, 100)}\n` +
-              `This action may cause irreversible damage to the system.\n` +
-              `Confirm ONLY if this is a false positive. Default: DENY.`
+              `[plugin-auto] ⛔ deny  — destructive pattern detected\n` +
+              `  Command: ${cmd.substring(0, 100)}\n` +
+              `  This action may cause irreversible damage.\n` +
+              `  Confirm ONLY if false positive. Default: DENY.`
             ) + '\n'
           );
         }
@@ -413,7 +414,7 @@ async function main() {
 
         if (verdict === 'safe') {
           process.stdout.write(
-            buildOutput('allow', '[plugin-auto] AI evaluated as safe') + '\n'
+            buildOutput('allow', `[plugin-auto] ✓ allow — AI override: evaluated as safe`) + '\n'
           );
         } else {
           process.stdout.write(buildOutput('ask', vAsk()) + '\n');
