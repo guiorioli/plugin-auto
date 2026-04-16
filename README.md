@@ -81,11 +81,13 @@ Priority order: `OLLAMA_URL` → `ANTHROPIC_API_KEY` → static rules only.
 
 ## Verbose mode
 
-By default, the hook adds a visible label to every decision:
+By default, the hook shows `[plugin-auto] checking permission` on every call, plus a classification label per decision:
 
-- `✓ allow — git status`
-- `⚠ ask — npm install`
-- `⛔ BLOCKED — shutdown now` (deny-tier override prompt)
+- `[plugin-auto] ✓ allow — git status`
+- `[plugin-auto] ⚠ ask — npm install`
+- `[plugin-auto] ⛔ deny — shutdown now` (deny-tier override prompt)
+
+Labels are written to stderr (visible in the Claude Code UI) and also included in `permissionDecisionReason` for `ask`/`deny` prompts.
 
 To hide labels (quiet mode), set `PLUGIN_AUTO_QUIET=1` in `~/.claude/settings.json`:
 

@@ -99,7 +99,7 @@ const ASK_CMD = [
 ];
 for (const [cmd, exp] of ASK_CMD) assert(cmd, run('Bash', { command: cmd }), exp);
 
-// ── Bash DENY → ask com ⛔ (override disponível) ───────────────────────────────
+// ── Bash DENY → ask com ⛔ (override disponível) ────────────────────────────────
 console.log('\n── Bash DENY (→ ask com aviso ⛔) ────────────────────');
 const DENY_INPUTS = [
   ['reboot',             'ask'],

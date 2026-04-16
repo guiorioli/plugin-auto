@@ -305,7 +305,7 @@ function parseVerdict(text) {
 
 async function callClaude(apiKey, command, tier) {
   const payload = JSON.stringify({
-    model: 'claude-haiku-4-5-20251001',
+    model: CLAUDE_MODEL,
     max_tokens: 60,
     system: SYSTEM_PROMPT(tier),
     messages: [{ role: 'user', content: `Command: ${command}` }],
@@ -354,13 +354,21 @@ async function callOllama(baseUrl, model, command, tier) {
   } catch { return null; }
 }
 
+const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
+
 async function getAiVerdict(command, tier) {
-  const ollamaUrl  = process.env.OLLAMA_URL;
+  const ollamaUrl    = process.env.OLLAMA_URL;
   const ollamaModel = process.env.OLLAMA_MODEL || 'glm-5.1:cloud';
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
-  if (ollamaUrl)    return callOllama(ollamaUrl, ollamaModel, command, tier);
-  if (anthropicKey) return callClaude(anthropicKey, command, tier);
+  if (ollamaUrl) {
+    const v = await callOllama(ollamaUrl, ollamaModel, command, tier);
+    return v ? { verdict: v, backend: `Ollama - ${ollamaModel}` } : null;
+  }
+  if (anthropicKey) {
+    const v = await callClaude(anthropicKey, command, tier);
+    return v ? { verdict: v, backend: `Anthropic API - ${CLAUDE_MODEL}` } : null;
+  }
   return null;
 }
 
@@ -381,6 +389,9 @@ async function main() {
       const quiet   = !!process.env.PLUGIN_AUTO_QUIET;
       const verbose = !quiet;
 
+      // Visible status on every hook call
+      process.stderr.write('[plugin-auto] checking permission\n');
+
       // Verbose helpers (default: on; PLUGIN_AUTO_QUIET=1 disables)
       const preview = (n) => cmd ? cmd.substring(0, n) : toolName;
       const vAllow  = () => verbose ? `[plugin-auto] ✓ allow — ${preview(70)}` : undefined;
@@ -388,35 +399,47 @@ async function main() {
       const vDeny   = () => verbose ? `[plugin-auto] ⛔ deny  — ${preview(70)}`   : undefined;
 
       if (decision === 'allow') {
+        if (verbose) process.stderr.write(vAllow() + '\n');
         process.stdout.write(buildOutput('allow', vAllow()) + '\n');
 
       } else if (decision === 'deny') {
-        const verdict = (toolName === 'Bash' && cmd) ? await getAiVerdict(cmd, 'deny') : null;
+        const ai = (toolName === 'Bash' && cmd) ? await getAiVerdict(cmd, 'deny') : null;
 
-        if (verdict === 'safe') {
-          process.stdout.write(
-            buildOutput('allow', `[plugin-auto] ✓ allow — AI override: destructive pattern evaluated as safe`) + '\n'
-          );
+        if (ai?.verdict === 'safe') {
+          const reason = `[plugin-auto] ✓ allow — AI override (${ai.backend}): destructive pattern evaluated as safe`;
+          if (verbose) process.stderr.write(reason + '\n');
+          process.stdout.write(buildOutput('allow', reason) + '\n');
+        } else if (ai?.verdict === 'unsafe') {
+          const reason =
+            `[plugin-auto] ⛔ deny  — destructive pattern + AI confirmed unsafe (${ai.backend})\n` +
+            `  Command: ${cmd.substring(0, 100)}\n` +
+            `  This action may cause irreversible damage.\n` +
+            `  Confirm ONLY if false positive.`;
+          if (verbose) process.stderr.write(reason + '\n');
+          process.stdout.write(buildOutput('ask', reason) + '\n');
         } else {
-          // Override available — default is to deny
-          process.stdout.write(
-            buildOutput('ask',
-              `[plugin-auto] ⛔ deny  — destructive pattern detected\n` +
-              `  Command: ${cmd.substring(0, 100)}\n` +
-              `  This action may cause irreversible damage.\n` +
-              `  Confirm ONLY if false positive. Default: DENY.`
-            ) + '\n'
-          );
+          const reason =
+            `[plugin-auto] ⛔ deny  — destructive pattern detected\n` +
+            `  Command: ${cmd.substring(0, 100)}\n` +
+            `  This action may cause irreversible damage.\n` +
+            `  Confirm ONLY if false positive.`;
+          if (verbose) process.stderr.write(reason + '\n');
+          process.stdout.write(buildOutput('ask', reason) + '\n');
         }
 
       } else { // 'ask'
-        const verdict = (toolName === 'Bash' && cmd) ? await getAiVerdict(cmd, 'ask') : null;
+        const ai = (toolName === 'Bash' && cmd) ? await getAiVerdict(cmd, 'ask') : null;
 
-        if (verdict === 'safe') {
-          process.stdout.write(
-            buildOutput('allow', `[plugin-auto] ✓ allow — AI override: evaluated as safe`) + '\n'
-          );
+        if (ai?.verdict === 'safe') {
+          const reason = `[plugin-auto] ✓ allow — AI override (${ai.backend}): evaluated as safe`;
+          if (verbose) process.stderr.write(reason + '\n');
+          process.stdout.write(buildOutput('allow', reason) + '\n');
+        } else if (ai?.verdict === 'unsafe') {
+          const reason = `[plugin-auto] ⚠ ask — AI evaluated as unsafe (${ai.backend})`;
+          if (verbose) process.stderr.write(reason + '\n');
+          process.stdout.write(buildOutput('ask', reason) + '\n');
         } else {
+          if (verbose) process.stderr.write(vAsk() + '\n');
           process.stdout.write(buildOutput('ask', vAsk()) + '\n');
         }
       }

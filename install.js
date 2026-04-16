@@ -161,7 +161,7 @@ async function install() {
         type: 'command',
         command: HOOK_COMMAND,
         timeout: 15,
-        statusMessage: 'Evaluating command safety...',
+        statusMessage: '[plugin-auto] checking permission',
       }],
     });
     console.log('[plugin-auto] Hook registered.');
