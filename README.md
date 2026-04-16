@@ -52,6 +52,10 @@ Non-Bash tools (`Agent`, unknown MCP tools, etc.) that aren't in the always-allo
 `rm -rf /`, `rm -rf ~`, `curl … | bash`, `format C:`, `mkfs`, `dd of=/dev/sda`,
 `shutdown`, `reboot`, `Stop-Computer`, fork bomb, overwrite of `/etc/passwd` / `/etc/shadow`…
 
+## Prerequisites
+
+- **Node.js ≥ 14** — no external npm dependencies required
+
 ## Installation
 
 ```bash
