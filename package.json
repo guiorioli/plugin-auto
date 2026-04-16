@@ -1,0 +1,15 @@
+{
+  "name": "plugin-auto",
+  "version": "1.0.0",
+  "description": "Claude Code hook: avaliação inteligente de permissões de ferramentas",
+  "main": "src/hook.js",
+  "scripts": {
+    "install-hook": "node install.js",
+    "uninstall-hook": "node install.js uninstall"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": ["claude-code", "hook", "permissions"],
+  "license": "MIT"
+}
