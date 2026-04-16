@@ -112,21 +112,23 @@ async function promptBackend(rl, settings) {
 }
 
 async function promptVerbose(rl, settings) {
-  const current = !!settings?.env?.PLUGIN_AUTO_VERBOSE;
-  const label   = current ? 'enabled' : 'disabled';
+  const current = !!settings?.env?.PLUGIN_AUTO_QUIET;
+  const label   = current ? 'quiet (labels hidden)' : 'verbose (labels shown)';
 
   console.log(`\n  Verbose mode — show classification (✓ allow / ⚠ ask) on every command.`);
-  console.log(`  Current setting: ${label}`);
+  console.log(`  Default: verbose. Current setting: ${label}`);
 
-  const answer = await ask(rl, `  Enable verbose mode? [y/N]: `);
+  const answer = await ask(rl, `  Enable quiet mode (hide labels)? [y/N]: `);
   if (!settings.env) settings.env = {};
 
   if (answer.toLowerCase() === 'y') {
-    settings.env.PLUGIN_AUTO_VERBOSE = '1';
-    console.log('  Verbose mode enabled.');
-  } else if (answer !== '') {
+    settings.env.PLUGIN_AUTO_QUIET = '1';
     delete settings.env.PLUGIN_AUTO_VERBOSE;
-    console.log('  Verbose mode disabled.');
+    console.log('  Quiet mode enabled — labels hidden.');
+  } else if (answer !== '') {
+    delete settings.env.PLUGIN_AUTO_QUIET;
+    delete settings.env.PLUGIN_AUTO_VERBOSE;
+    console.log('  Verbose mode kept — labels shown on every command.');
   } else {
     console.log(`  Keeping: ${label}.`);
   }
@@ -184,12 +186,12 @@ async function install() {
       ? 'Anthropic API (Haiku)'
       : 'None (static rules only)';
 
-  const verboseStatus = settings?.env?.PLUGIN_AUTO_VERBOSE ? 'enabled' : 'disabled';
+  const verboseStatus = settings?.env?.PLUGIN_AUTO_QUIET ? 'quiet (labels hidden)' : 'verbose (labels shown)';
 
   console.log('\n[plugin-auto] Installation complete!');
   console.log('  Restart Claude Code to apply changes.\n');
   console.log(`  AI backend:     ${backend}`);
-  console.log(`  Verbose mode:   ${verboseStatus}`);
+  console.log(`  Display mode:  ${verboseStatus}`);
   console.log('  Behavior:');
   console.log('    allow  → Read, Glob, Grep, Write, Edit, ls, git status...');
   console.log('    ask    → git push, npm install, rm, docker run...');

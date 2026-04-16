@@ -5,81 +5,81 @@
  * plugin-auto — Claude Code PreToolUse Hook
  *
  * Classifica chamadas de ferramentas:
- *   allow  → aprovação automática, sem prompt
- *   ask    → exige confirmação do usuário (inclusive em modo auto)
- *   deny   → redireciona para ask com aviso ⛔ (override manual disponível)
+ *   allow  → automatic approval, no prompt
+ *   ask    → requires user confirmation (even in auto mode)
+ *   deny   → redirects to ask with ⛔ warning (manual override available)
  *
- * Backend de IA (opcional, reduz falso-positivos em ask/deny):
- *   OLLAMA_URL + OLLAMA_MODEL  → Ollama local (prioridade)
+ * AI backend (optional, reduces false positives in ask/deny):
+ *   OLLAMA_URL + OLLAMA_MODEL  → local Ollama (priority)
  *   ANTHROPIC_API_KEY          → Anthropic API (Haiku)
- *   (nenhum)                   → somente regras estáticas
+ *   (none)                     → static rules only
  *
- * Saída: { "hookSpecificOutput": { "hookEventName": "PreToolUse", "permissionDecision": "..." } }
- * Erro:  sai com código 0 sem output → comportamento padrão do Claude Code.
+ * Output: { "hookSpecificOutput": { "hookEventName": "PreToolUse", "permissionDecision": "..." } }
+ * Error:  exits with code 0, no output → Claude Code default behavior.
  */
 
 const http  = require('http');
 const https = require('https');
 
-// ─── Ferramentas sempre permitidas ────────────────────────────────────────────
+// ─── Always-allowed tools ───────────────────────────────────────────────────────
 const ALWAYS_ALLOW_TOOLS = new Set([
   'Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch',
   'Write', 'Edit', 'NotebookEdit',
 ]);
 
-// ─── Padrões Bash: BLOQUEAR ────────────────────────────────────────────────────
+// ─── Bash patterns: DENY ──────────────────────────────────────────────────────
 const DENY_BASH = [
-  // rm recursivo na raiz ou home
+  // Recursive rm at root or home
   /\brm\s+(-[a-z]*r[a-z]*\s+|--recursive\s+)(-[a-z]*f[a-z]*\s+|--force\s+)?(\/|~)(\s|$)/,
   /\brm\s+(-[a-z]*f[a-z]*\s+)?(-[a-z]*r[a-z]*\s+)(\/|~)(\s|$)/,
   /--no-preserve-root/,
-  // Pipe de download direto para shell (execução remota arbitrária)
+  // Piped download to shell (arbitrary remote execution)
   /\b(curl|wget)\b[^|#\n]*\|\s*(sudo\s+)?(ba?sh|zsh|sh|fish|dash|ksh|node|python3?|ruby|perl)\b/i,
   // Fork bomb
   /:\s*\(\s*\)\s*\{[^}]*:\s*[|&][^}]*\}/,
-  // Sobrescrita de arquivos críticos do sistema
+  // Overwrite of critical system files
   /[^>]>\s*\/etc\/(passwd|shadow|sudoers|group|hostname|hosts|crontab|fstab)\b/,
-  // Formatação de disco
+  // Disk formatting
   /\bformat\s+[A-Za-z]:/i,
   /\bmkfs\b/,
   /\bfdisk\s/,
-  // DD em dispositivo físico
+  // DD to physical device
   /\bdd\b.*\bof=\/dev\/(sd[a-z]+|hd[a-z]+|nvme\d+|vd[a-z]+|disk\d*)(\s|$)/,
-  // Desligamento do sistema
+  // System shutdown
   /\b(shutdown|reboot|poweroff|halt)\b/,
   /\binit\s+(0|6)\b/,
-  // PowerShell destrutivo
+  // Destructive PowerShell
   /\b(Stop-Computer|Restart-Computer)\b/i,
 ];
 
-// ─── Padrões Bash: PEDIR CONFIRMAÇÃO ──────────────────────────────────────────
+// ─── Bash patterns: ASK ────────────────────────────────────────────────────────
 const ASK_BASH = [
-  // Remoção de arquivos
+  // File removal
   /\brm\b/,
   /\brmdir\b/,
   /\bdel\s/,
   /\brd\s+\/[Ss]\b/i,
-  // Elevação de privilégio
+  // Privilege escalation
   /\bsudo\b/,
   /\bsu\s/,
   /\bdoas\b/,
   /\brunas\b/i,
-  // Permissões de arquivo
+  // File permissions
   /\bchmod\b/,
   /\bchown\b/,
   /\bicacls\b/i,
   /\battrib\b/i,
-  // Git (escrita/alteração de estado)
+  // Git (write/state change)
   /\bgit\s+(push|reset|clean|checkout\s+--|restore|rebase|merge|commit|add|pull|stash\s+(pop|apply|drop|clear)|branch\s+-[dD]|tag\s+-d|remote\s+(add|remove|set-url)|config)\b/,
   /\bgit\s+clone\b/,
-  // Package managers — originais
+  // Package managers — original
   /\bnpm\s+(i\b|install|uninstall|ci|update|dedupe|link|publish)\b/,
   /\byarn\s+(install|add|remove|upgrade|publish|link)\b/,
   /\bpip3?\s+(install|uninstall|download)\b/,
   /\bcomposer\s+(install|update|require|remove)\b/,
   /\bcargo\s+(install|uninstall|build|publish)\b/,
   /\bgo\s+(get|install|build)\b/,
-  // Package managers — adicionais
+  // Package managers — additional
   /\bapt(-get)?\s+(install|remove|purge|autoremove|upgrade|dist-upgrade)\b/i,
   /\byum\s+(install|remove|update|upgrade)\b/i,
   /\bdnf\s+(install|remove|update|upgrade)\b/i,
@@ -88,56 +88,56 @@ const ASK_BASH = [
   /\bsnap\s+(install|remove|refresh)\b/i,
   /\bwinget\s+(install|uninstall|upgrade)\b/i,
   /\bchoco(latey)?\s+(install|uninstall|upgrade)\b/i,
-  // Gerenciamento de serviços
+  // Service management
   /\bsystemctl\s+(start|stop|restart|enable|disable|mask|unmask|daemon-reload)\b/,
   /\bservice\s+\S+\s+(start|stop|restart|reload)\b/,
-  // Conexões remotas e transferência
+  // Remote connections and transfers
   /\bssh\s+/,
   /\bscp\s+/,
   /\bsftp\s+/,
   /\brsync\s+/,
-  // Download de arquivos
+  // File downloads
   /\bwget\s+/,
   /\bcurl\b.*\s(-O\b|--remote-name|-o\s+\S|--output\s+\S)/,
-  // Rede com escrita
+  // Network writes
   /\bcurl\b.*-[Xx]\s*(POST|PUT|PATCH|DELETE)/i,
   /\bcurl\b.*--request\s+(POST|PUT|PATCH|DELETE)/i,
   /\bcurl\b.*\s-[dT]\s/,
   /\bwget\b.*--post/i,
-  // Extração de arquivos
+  // File extraction
   /\btar\b[^|]*-?[a-z]*x[a-z]*/,
   /\bunzip\s+(?!.*-[lv]\b)/,
   /\b7z\s+(x|e)\s/,
   /\bunrar\s+(x|e)\s/,
-  // Cópia e links (podem sobrescrever)
+  // Copy and links (may overwrite)
   /\bcp\s+/,
   /\bln\s+/,
   /\btruncate\s+/,
-  // Banco de dados destrutivo
+  // Destructive database
   /\bDROP\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA)\b/i,
   /\bTRUNCATE\b/i,
   /\bDELETE\s+FROM\b/i,
-  // Gestão de processos
+  // Process management
   /\b(kill|pkill|killall)\b/,
   /\btaskkill\b/i,
-  // Mover ou sobrescrever arquivos
+  // Move or overwrite files
   /\bmv\b/,
   /\bxcopy\b/i,
   /\brobocopy\b/i,
-  // Redirecionamento de saída (sobrescreve arquivo)
+  // Output redirection (overwrites file)
   /(?<![>|&])\s*>\s*(?![>&\s*$])\S/,
-  // Docker/container (altera estado)
+  // Docker/container (state change)
   /\bdocker\s+(run|exec|rm|rmi|stop|start|kill|build|push|pull|compose)\b/,
   /\bdocker-compose\s+(up|down|rm|build|push)\b/,
   // Cloud CLI write operations
   /\baws\s+\S+\s+(delete|remove|terminate|stop|create|update|put|push|deploy)\b/i,
   /\bgcloud\s+\S+\s+(delete|remove|stop|create|update|push|deploy)\b/i,
-  // IaC e orquestração
+  // IaC and orchestration
   /\bterraform\s+(apply|destroy|import|force-unlock)\b/i,
   /\bkubectl\s+(apply|delete|create|replace|patch|exec|run|scale|rollout)\b/,
   /\bhelmfile?\s+(apply|destroy|sync)\b/i,
   /\bansible(-playbook)?\s+\S/,
-  // PowerShell — adicional
+  // PowerShell — additional
   /\bRemove-Item\b/i,
   /\bInvoke-Expression\b/i,
   /\biex\b/i,
@@ -150,9 +150,9 @@ const ASK_BASH = [
   /\bAdd-Content\b/i,
 ];
 
-// ─── Padrões Bash: PERMITIR ────────────────────────────────────────────────────
+// ─── Bash patterns: ALLOW ───────────────────────────────────────────────────────
 const ALLOW_BASH = [
-  // Listagem e leitura de arquivos
+  // File listing and reading
   /^\s*ls\b/,
   /^\s*dir\b/,
   /^\s*cat\b/,
@@ -164,7 +164,7 @@ const ALLOW_BASH = [
   /^\s*file\b/,
   /^\s*stat\b/,
   /^\s*wc\b/,
-  // Navegação e info
+  // Navigation and info
   /^\s*cd\b/,
   /^\s*pwd\b/,
   /^\s*echo\b/,
@@ -179,10 +179,10 @@ const ALLOW_BASH = [
   /^\s*env\b/,
   /^\s*printenv\b/,
   /^\s*set\b/,
-  // Criação segura de arquivos/dirs
+  // Safe file/dir creation
   /^\s*mkdir\b/,
   /^\s*touch\b/,
-  // Busca e filtro
+  // Search and filter
   /^\s*grep\b/,
   /^\s*find\b/,
   /^\s*locate\b/,
@@ -194,9 +194,9 @@ const ALLOW_BASH = [
   /^\s*sed\b/,
   /^\s*jq\b/,
   /^\s*tr\b/,
-  // Timing (scripts de espera)
+  // Timing (wait scripts)
   /^\s*sleep\b/,
-  // Rede — diagnóstico (somente leitura)
+  // Network — diagnostics (read-only)
   /^\s*ping\b/,
   /^\s*traceroute\b/,
   /^\s*tracert\b/i,
@@ -205,29 +205,29 @@ const ALLOW_BASH = [
   /^\s*host\b/,
   /^\s*arp\b/,
   /^\s*route\b/,
-  // Checksums (verificação de integridade)
+  // Checksums (integrity verification)
   /^\s*(md5sum|sha1sum|sha224sum|sha256sum|sha384sum|sha512sum|cksum|b2sum)\b/,
-  // Git (somente leitura)
+  // Git (read-only)
   /^\s*git\s+(status|log|diff|show|branch|remote\s+-v|describe|ls-files|ls-tree|blame|shortlog|reflog\s+show|stash\s+list|tag\b(?!\s+-d))\b/,
   /^\s*git\s+fetch\b/,
-  // Package managers (somente leitura)
+  // Package managers (read-only)
   /^\s*npm\s+(list|ls|outdated|audit|view|info|search|explain)\b/,
   /^\s*yarn\s+(list|info|audit|why)\b/,
   /^\s*pip3?\s+(list|show|freeze|check)\b/,
-  // Versões e ajuda
+  // Versions and help
   /^\s*\S+\s+(--version|-v|--help|-h)\s*$/,
   /^\s*(node|python3?|ruby|java|go|cargo|rustc|tsc|tsx)\s+(-v|--version)\s*$/,
-  // Info do sistema
+  // System info
   /^\s*(ps|df|du|free|top|htop|uptime|lscpu|lsblk|lshw|netstat|ss)\b/,
   /^\s*ipconfig\b/i,
   /^\s*ifconfig\b/,
-  // systemctl somente leitura
+  // systemctl read-only
   /^\s*systemctl\s+(status|list-units|list-services|list-sockets|show|is-active|is-enabled|is-failed|cat)\b/,
-  // Archive listing (sem extração)
+  // Archive listing (no extraction)
   /^\s*tar\b[^|]*\s-?[a-z]*t[a-z]*\b/,
   /^\s*unzip\b.*\s-[lv]\b/,
   /^\s*zip\b.*\s-[lv]\b/,
-  // PowerShell (somente leitura)
+  // PowerShell (read-only)
   /^\s*Get-(Content|ChildItem|Item|Process|Service|Command|Help|Member|NetAdapter|NetIPAddress)\b/i,
   /^\s*Select-String\b/i,
   /^\s*Test-Path\b/i,
@@ -235,14 +235,14 @@ const ALLOW_BASH = [
   /^\s*Format-(List|Table|Wide)\b/i,
   /^\s*Measure-Object\b/i,
   /^\s*Test-Connection\b/i,
-  // npm run scripts de desenvolvimento
+  // npm run dev scripts
   /^\s*npm\s+run\s+(lint|test|typecheck|type-check|check|build|compile)\b/,
   /^\s*tsc\b/,
   /^\s*eslint\b/,
   /^\s*prettier\b/,
 ];
 
-// ─── Classificação ─────────────────────────────────────────────────────────────
+// ─── Classification ──────────────────────────────────────────────────────────────
 
 function classifyBash(command) {
   if (!command || !command.trim()) return 'allow';
@@ -252,7 +252,7 @@ function classifyBash(command) {
   for (const p of ASK_BASH)   if (p.test(cmd)) return 'ask';
   for (const p of ALLOW_BASH) if (p.test(cmd)) return 'allow';
 
-  return 'ask'; // desconhecido → pedir confirmação por padrão
+  return 'ask'; // unknown → prompt by default
 }
 
 function classifyTool(toolName, toolInput) {
@@ -261,7 +261,7 @@ function classifyTool(toolName, toolInput) {
   return 'ask';
 }
 
-// ─── Output ────────────────────────────────────────────────────────────────────
+// ─── Output ───────────────────────────────────────────────────────────────────
 
 function buildOutput(decision, reason) {
   const out = { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: decision } };
@@ -269,7 +269,7 @@ function buildOutput(decision, reason) {
   return JSON.stringify(out);
 }
 
-// ─── Backends de IA ────────────────────────────────────────────────────────────
+// ─── AI backends ───────────────────────────────────────────────────────────────
 
 const SYSTEM_PROMPT = (tier) =>
   `You are a security evaluator for bash commands in a software development environment.
@@ -364,7 +364,7 @@ async function getAiVerdict(command, tier) {
   return null;
 }
 
-// ─── Main ──────────────────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
   const chunks = [];
@@ -378,9 +378,10 @@ async function main() {
       const { tool_name: toolName, tool_input: toolInput } = JSON.parse(raw);
       const decision = classifyTool(toolName, toolInput);
       const cmd     = toolInput?.command || '';
-      const verbose = !!process.env.PLUGIN_AUTO_VERBOSE;
+      const quiet   = !!process.env.PLUGIN_AUTO_QUIET;
+      const verbose = !quiet;
 
-      // Helpers de verbose
+      // Verbose helpers (default: on; PLUGIN_AUTO_QUIET=1 disables)
       const preview = (n) => cmd ? cmd.substring(0, n) : toolName;
       const vAllow  = () => verbose ? `[plugin-auto] ✓ allow — ${preview(70)}` : undefined;
       const vAsk    = () => verbose ? `[plugin-auto] ⚠ ask — ${preview(70)}`   : undefined;
@@ -393,16 +394,16 @@ async function main() {
 
         if (verdict === 'safe') {
           process.stdout.write(
-            buildOutput('allow', '[plugin-auto] Padrão destrutivo detectado, mas AI avaliou como seguro no contexto') + '\n'
+            buildOutput('allow', '[plugin-auto] Destructive pattern detected, but AI evaluated as safe in context') + '\n'
           );
         } else {
-          // Override disponível — default é recusar
+          // Override available — default is to deny
           process.stdout.write(
             buildOutput('ask',
-              `⛔ OPERAÇÃO BLOQUEADA — padrão destrutivo detectado\n` +
-              `Comando: ${cmd.substring(0, 100)}\n` +
-              `Esta ação pode causar dano irreversível ao sistema.\n` +
-              `Confirme APENAS se for um falso-positivo. Por padrão: RECUSAR.`
+              `⛔ BLOCKED — destructive pattern detected\n` +
+              `Command: ${cmd.substring(0, 100)}\n` +
+              `This action may cause irreversible damage to the system.\n` +
+              `Confirm ONLY if this is a false positive. Default: DENY.`
             ) + '\n'
           );
         }
@@ -412,7 +413,7 @@ async function main() {
 
         if (verdict === 'safe') {
           process.stdout.write(
-            buildOutput('allow', '[plugin-auto] AI avaliou como seguro') + '\n'
+            buildOutput('allow', '[plugin-auto] AI evaluated as safe') + '\n'
           );
         } else {
           process.stdout.write(buildOutput('ask', vAsk()) + '\n');

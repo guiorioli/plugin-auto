@@ -81,17 +81,17 @@ Priority order: `OLLAMA_URL` → `ANTHROPIC_API_KEY` → static rules only.
 
 ## Verbose mode
 
-When `PLUGIN_AUTO_VERBOSE=1` is set in `settings.json["env"]`, the hook adds a visible label to every decision:
+By default, the hook adds a visible label to every decision:
 
 - `✓ allow — git status`
 - `⚠ ask — npm install`
-- `⛔ OPERAÇÃO BLOQUEADA — shutdown now` (deny-tier override prompt)
+- `⛔ BLOCKED — shutdown now` (deny-tier override prompt)
 
-Enable it during installation or set it manually in `~/.claude/settings.json`:
+To hide labels (quiet mode), set `PLUGIN_AUTO_QUIET=1` in `~/.claude/settings.json`:
 
 ```json
 "env": {
-  "PLUGIN_AUTO_VERBOSE": "1"
+  "PLUGIN_AUTO_QUIET": "1"
 }
 ```
 
