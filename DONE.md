@@ -1,5 +1,9 @@
 #DONE
 
+## v1.3.1 — Installer translated to English (2026-04-16)
+
+- [x] install.js — all user-facing strings translated from Portuguese to English (prompts, messages, status, errors)
+
 ## v1.3.0 — Verbose, defaults Ollama e UX instalador (2026-04-16)
 
 - [x] src/hook.js — modo verbose (`PLUGIN_AUTO_VERBOSE=1`): reason `✓ allow`/`⚠ ask` em todas as decisões sem reason existente

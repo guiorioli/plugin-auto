@@ -2,11 +2,11 @@
 'use strict';
 
 /**
- * plugin-auto — Instalador / Desinstalador
+ * plugin-auto — Installer / Uninstaller
  *
- * Uso:
- *   node install.js           → instala o hook e configura backend de IA
- *   node install.js uninstall → remove o hook do settings.json
+ * Usage:
+ *   node install.js           → installs the hook and configures AI backend
+ *   node install.js uninstall → removes the hook from settings.json
  */
 
 const fs       = require('fs');
@@ -26,7 +26,7 @@ function readSettings() {
     if (fs.existsSync(SETTINGS_PATH))
       return JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'));
   } catch {
-    console.warn('Não foi possível ler settings.json, criando do zero.');
+    console.warn('Could not read settings.json, creating from scratch.');
   }
   return {};
 }
@@ -47,100 +47,100 @@ async function promptBackend(rl, settings) {
   const hasAnthropicKey = !!settings?.env?.ANTHROPIC_API_KEY;
   const hasOllamaUrl    = !!settings?.env?.OLLAMA_URL;
 
-  const currentBackend = hasOllamaUrl ? 'Ollama' : hasAnthropicKey ? 'Anthropic API' : 'Nenhum';
+  const currentBackend = hasOllamaUrl ? 'Ollama' : hasAnthropicKey ? 'Anthropic API' : 'None';
 
-  console.log('\n  ┌─ BACKEND DE IA (validação inteligente de comandos) ────────────────┐');
+  console.log('\n  ┌─ AI BACKEND (smart command validation) ───────────────────────────┐');
   console.log('  │                                                                     │');
-  console.log('  │  Comandos classificados como ask/deny são enviados à IA antes de    │');
-  console.log('  │  bloquear ou pedir confirmação — reduz falso-positivos.             │');
+  console.log('  │  Commands classified as ask/deny are sent to AI before             │');
+  console.log('  │  blocking or prompting — reduces false positives.                  │');
   console.log('  │                                                                     │');
-  console.log('  │  (1) Anthropic API  — cloud, ~$0.01/mês para uso típico            │');
-  console.log('  │      Chave em: https://console.anthropic.com > API Keys            │');
+  console.log('  │  (1) Anthropic API  — cloud, ~$0.01/mo for typical usage           │');
+  console.log('  │      Key at: https://console.anthropic.com > API Keys              │');
   console.log('  │                                                                     │');
-  console.log('  │  (2) Ollama         — local, gratuito, requer Ollama instalado      │');
-  console.log('  │      Download em: https://ollama.com                               │');
+  console.log('  │  (2) Ollama         — local, free, requires Ollama installed        │');
+  console.log('  │      Download at: https://ollama.com                                │');
   console.log('  │                                                                     │');
-  console.log('  │  (3) Nenhum         — apenas regras estáticas (sem chamadas de IA) │');
+  console.log('  │  (3) None           — static rules only (no AI calls)               │');
   console.log('  │                                                                     │');
-  console.log(`  │  Configuração atual: ${currentBackend.padEnd(43)}│`);
+  console.log(`  │  Current: ${currentBackend.padEnd(50)}│`);
   console.log('  └─────────────────────────────────────────────────────────────────────┘\n');
 
-  const choice = await ask(rl, '  Escolha o backend [1/2/3]: ');
+  const choice = await ask(rl, '  Choose backend [1/2/3]: ');
 
   if (choice === '1') {
     if (hasAnthropicKey) {
       const key = settings.env.ANTHROPIC_API_KEY;
-      console.log(`\n  ANTHROPIC_API_KEY já configurada (${key.substring(0, 12)}...).`);
-      const replace = await ask(rl, '  Substituir? [s/N]: ');
-      if (replace.toLowerCase() !== 's') return;
+      console.log(`\n  ANTHROPIC_API_KEY already configured (${key.substring(0, 12)}...).`);
+      const replace = await ask(rl, '  Replace? [y/N]: ');
+      if (replace.toLowerCase() !== 'y') return;
     }
-    const key = await ask(rl, '\n  Cole a ANTHROPIC_API_KEY e pressione Enter: ');
+    const key = await ask(rl, '\n  Paste the ANTHROPIC_API_KEY and press Enter: ');
     if (key) {
       if (!settings.env) settings.env = {};
       delete settings.env.OLLAMA_URL;
       delete settings.env.OLLAMA_MODEL;
       settings.env.ANTHROPIC_API_KEY = key;
-      console.log('  Chave salva.');
+      console.log('  Key saved.');
     } else {
-      console.log('  Entrada vazia — backend não alterado.');
+      console.log('  Empty input — backend unchanged.');
     }
 
   } else if (choice === '2') {
     if (hasOllamaUrl) {
-      console.log(`\n  Ollama já configurado: ${settings.env.OLLAMA_URL} (modelo: ${settings.env.OLLAMA_MODEL || 'glm-5.1:cloud'}).`);
-      const replace = await ask(rl, '  Reconfigurar? [s/N]: ');
-      if (replace.toLowerCase() !== 's') return;
+      console.log(`\n  Ollama already configured: ${settings.env.OLLAMA_URL} (model: ${settings.env.OLLAMA_MODEL || 'glm-5.1:cloud'}).`);
+      const replace = await ask(rl, '  Reconfigure? [y/N]: ');
+      if (replace.toLowerCase() !== 'y') return;
     }
-    const url   = await ask(rl, '\n  URL do Ollama [enter para http://localhost:11434]: ');
-    const model = await ask(rl, '  Modelo Ollama [enter para glm-5.1:cloud]: ');
+    const url   = await ask(rl, '\n  Ollama URL [enter for http://localhost:11434]: ');
+    const model = await ask(rl, '  Ollama model [enter for glm-5.1:cloud]: ');
     if (!settings.env) settings.env = {};
     delete settings.env.ANTHROPIC_API_KEY;
     settings.env.OLLAMA_URL   = url   || 'http://localhost:11434';
     settings.env.OLLAMA_MODEL = model || 'glm-5.1:cloud';
-    console.log(`  Ollama configurado: ${settings.env.OLLAMA_URL} (${settings.env.OLLAMA_MODEL}).`);
+    console.log(`  Ollama configured: ${settings.env.OLLAMA_URL} (${settings.env.OLLAMA_MODEL}).`);
 
   } else if (choice === '3') {
     if (!settings.env) settings.env = {};
     delete settings.env.ANTHROPIC_API_KEY;
     delete settings.env.OLLAMA_URL;
     delete settings.env.OLLAMA_MODEL;
-    console.log('  Backend removido — apenas regras estáticas.');
+    console.log('  Backend removed — static rules only.');
 
   } else {
-    console.log('  Opção inválida — backend não alterado.');
+    console.log('  Invalid option — backend unchanged.');
   }
 }
 
 async function promptVerbose(rl, settings) {
   const current = !!settings?.env?.PLUGIN_AUTO_VERBOSE;
-  const label   = current ? 'ativado' : 'desativado';
+  const label   = current ? 'enabled' : 'disabled';
 
-  console.log(`\n  Modo verbose — exibir classificação (✓ allow / ⚠ ask) em todos os comandos.`);
-  console.log(`  Configuração atual: ${label}`);
+  console.log(`\n  Verbose mode — show classification (✓ allow / ⚠ ask) on every command.`);
+  console.log(`  Current setting: ${label}`);
 
-  const answer = await ask(rl, `  Ativar modo verbose? [s/N]: `);
+  const answer = await ask(rl, `  Enable verbose mode? [y/N]: `);
   if (!settings.env) settings.env = {};
 
-  if (answer.toLowerCase() === 's') {
+  if (answer.toLowerCase() === 'y') {
     settings.env.PLUGIN_AUTO_VERBOSE = '1';
-    console.log('  Modo verbose ativado.');
+    console.log('  Verbose mode enabled.');
   } else if (answer !== '') {
     delete settings.env.PLUGIN_AUTO_VERBOSE;
-    console.log('  Modo verbose desativado.');
+    console.log('  Verbose mode disabled.');
   } else {
-    console.log(`  Mantendo: ${label}.`);
+    console.log(`  Keeping: ${label}.`);
   }
 }
 
 // ─── Install / Uninstall ──────────────────────────────────────────────────────
 
 async function install() {
-  console.log('\n[plugin-auto] Instalando hook no Claude Code...');
+  console.log('\n[plugin-auto] Installing hook in Claude Code...');
   console.log(`  Script:   ${HOOK_SCRIPT}`);
   console.log(`  Settings: ${SETTINGS_PATH}\n`);
 
   if (!fs.existsSync(HOOK_SCRIPT)) {
-    console.error(`ERRO: ${HOOK_SCRIPT} não encontrado.`);
+    console.error(`ERROR: ${HOOK_SCRIPT} not found.`);
     process.exit(1);
   }
 
@@ -159,15 +159,15 @@ async function install() {
         type: 'command',
         command: HOOK_COMMAND,
         timeout: 15,
-        statusMessage: 'Avaliando segurança do comando...',
+        statusMessage: 'Evaluating command safety...',
       }],
     });
-    console.log('[plugin-auto] Hook registrado.');
+    console.log('[plugin-auto] Hook registered.');
   } else {
-    console.log('[plugin-auto] Hook já registrado.');
+    console.log('[plugin-auto] Hook already registered.');
   }
 
-  // ── 2. Configurar backend de IA e verbose ─────────────────────────────────
+  // ── 2. Configure AI backend and verbose mode ───────────────────────────────
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   try {
     await promptBackend(rl, settings);
@@ -179,30 +179,30 @@ async function install() {
   writeSettings(settings);
 
   const backend = settings?.env?.OLLAMA_URL
-    ? `Ollama (${settings.env.OLLAMA_URL}, modelo: ${settings.env.OLLAMA_MODEL || 'glm-5.1:cloud'})`
+    ? `Ollama (${settings.env.OLLAMA_URL}, model: ${settings.env.OLLAMA_MODEL || 'glm-5.1:cloud'})`
     : settings?.env?.ANTHROPIC_API_KEY
       ? 'Anthropic API (Haiku)'
-      : 'Nenhum (somente regras estáticas)';
+      : 'None (static rules only)';
 
-  const verboseStatus = settings?.env?.PLUGIN_AUTO_VERBOSE ? 'ativado' : 'desativado';
+  const verboseStatus = settings?.env?.PLUGIN_AUTO_VERBOSE ? 'enabled' : 'disabled';
 
-  console.log('\n[plugin-auto] Instalação concluída!');
-  console.log('  Reinicie o Claude Code para aplicar as alterações.\n');
-  console.log(`  Backend de IA:  ${backend}`);
-  console.log(`  Modo verbose:   ${verboseStatus}`);
-  console.log('  Comportamento:');
+  console.log('\n[plugin-auto] Installation complete!');
+  console.log('  Restart Claude Code to apply changes.\n');
+  console.log(`  AI backend:     ${backend}`);
+  console.log(`  Verbose mode:   ${verboseStatus}`);
+  console.log('  Behavior:');
   console.log('    allow  → Read, Glob, Grep, Write, Edit, ls, git status...');
   console.log('    ask    → git push, npm install, rm, docker run...');
-  console.log('    deny   → prompt ⛔ com override manual disponível\n');
+  console.log('    deny   → ⛔ prompt with manual override available\n');
 }
 
 function uninstall() {
-  console.log('\n[plugin-auto] Removendo hook do Claude Code...');
+  console.log('\n[plugin-auto] Removing hook from Claude Code...');
 
   const settings = readSettings();
 
   if (!settings.hooks?.PreToolUse) {
-    console.log('[plugin-auto] Não está instalado. Nenhuma alteração feita.');
+    console.log('[plugin-auto] Not installed. No changes made.');
     return;
   }
 
@@ -211,7 +211,7 @@ function uninstall() {
   const after = settings.hooks.PreToolUse.length;
 
   if (before === after) {
-    console.log('[plugin-auto] Não estava instalado. Nenhuma alteração feita.');
+    console.log('[plugin-auto] Was not installed. No changes made.');
     return;
   }
 
@@ -219,8 +219,8 @@ function uninstall() {
   if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
 
   writeSettings(settings);
-  console.log('[plugin-auto] Removido com sucesso.');
-  console.log('  Nota: variáveis de ambiente (ANTHROPIC_API_KEY, OLLAMA_URL...) foram mantidas.\n');
+  console.log('[plugin-auto] Successfully removed.');
+  console.log('  Note: environment variables (ANTHROPIC_API_KEY, OLLAMA_URL...) were preserved.\n');
 }
 
 // ─── CLI ──────────────────────────────────────────────────────────────────────
@@ -229,7 +229,7 @@ if (cmd === 'uninstall') {
   uninstall();
 } else {
   install().catch((err) => {
-    console.error(`[plugin-auto] Erro durante instalação: ${err.message}`);
+    console.error(`[plugin-auto] Error during installation: ${err.message}`);
     process.exit(1);
   });
 }
