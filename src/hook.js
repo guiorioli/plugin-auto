@@ -28,6 +28,14 @@ const ALWAYS_ALLOW_TOOLS = new Set([
   'ToolSearch',
   // Task management — internal Claude Code state, no external side-effects
   'TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList', 'TaskOutput', 'TaskStop',
+  // Subagent/skill dispatchers — child tool calls are classified individually
+  'Agent', 'Skill', 'SendMessage',
+  // Plan mode — internal state only, no external side-effects
+  'EnterPlanMode', 'ExitPlanMode',
+  // User interaction — only displays a question
+  'AskUserQuestion',
+  // Cron read-only
+  'CronList',
 ]);
 
 // ─── MCP tool classification ────────────────────────────────────────────────────
