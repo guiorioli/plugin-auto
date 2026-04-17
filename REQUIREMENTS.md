@@ -110,7 +110,7 @@ Expandir as listas DENY, ASK e ALLOW com padrões críticos faltantes:
 - **ALLOW**: `ping`, `traceroute`/`tracert`, `nslookup`/`dig`, checksums (`md5sum`, `sha256sum`...), `sleep`, `mkdir`, `touch`, `systemctl status/list`, listagem de archives
 
 ### RF-20 — Modo Verbose (visibilidade de todas as decisões)
-Deve existir uma opção configurável (`PLUGIN_AUTO_VERBOSE=1` em `settings.json["env"]`) que, quando ativa, faz o hook incluir um reason em **toda** decisão `allow` e `ask` sem reason existente, permitindo que o usuário veja a classificação mesmo para comandos aprovados silenciosamente.
+Verbose é o comportamento **padrão**: o hook inclui um reason (`✓ allow` / `⚠ ask`) em toda decisão. Para silenciar, define-se `PLUGIN_AUTO_QUIET=1` em `settings.json["env"]`, que remove os labels de todas as decisões aprovadas automaticamente.
 
 ### RF-21 — Configuração do Modo Verbose no Instalador
 O `install.js` deve perguntar ao usuário se deseja ativar o modo verbose e persistir a configuração.

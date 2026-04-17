@@ -118,6 +118,7 @@ const ASK_BASH = [
   /\bcp\s+/,
   /\bln\s+/,
   /\btruncate\s+/,
+  /\bsed\b[^|&;\n]*\s-[a-z]*i\b/,
   // Destructive database
   /\bDROP\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA)\b/i,
   /\bTRUNCATE\b/i,
@@ -286,6 +287,8 @@ function buildOutput(decision, reason) {
 
 // ─── AI backends ───────────────────────────────────────────────────────────────
 
+const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
+
 const SYSTEM_PROMPT = (tier) =>
   `You are a security evaluator for bash commands in a software development environment.
 A rule-based filter flagged the following command as potentially risky (tier: ${tier}).
@@ -325,9 +328,9 @@ function parseVerdict(text) {
   return (text || '').trim().toUpperCase().startsWith('SAFE') ? 'safe' : 'unsafe';
 }
 
-async function callClaude(apiKey, context, tier, isMcp = false) {
-  const sysPrompt = isMcp ? TOOL_SYSTEM_PROMPT(tier) : SYSTEM_PROMPT(tier);
-  const userMsg   = isMcp
+async function callClaude(apiKey, context, tier, isTool = false) {
+  const sysPrompt = isTool ? TOOL_SYSTEM_PROMPT(tier) : SYSTEM_PROMPT(tier);
+  const userMsg   = isTool
     ? `Tool: ${context.toolName}\nInput: ${JSON.stringify(context.toolInput).substring(0, 300)}`
     : `Command: ${context}`;
   const payload = JSON.stringify({
@@ -353,9 +356,9 @@ async function callClaude(apiKey, context, tier, isMcp = false) {
   } catch { return null; }
 }
 
-async function callOllama(baseUrl, model, context, tier, isMcp = false) {
-  const sysPrompt = isMcp ? TOOL_SYSTEM_PROMPT(tier) : SYSTEM_PROMPT(tier);
-  const userMsg   = isMcp
+async function callOllama(baseUrl, model, context, tier, isTool = false) {
+  const sysPrompt = isTool ? TOOL_SYSTEM_PROMPT(tier) : SYSTEM_PROMPT(tier);
+  const userMsg   = isTool
     ? `Tool: ${context.toolName}\nInput: ${JSON.stringify(context.toolInput).substring(0, 300)}`
     : `Command: ${context}`;
   const payload = JSON.stringify({
@@ -384,19 +387,17 @@ async function callOllama(baseUrl, model, context, tier, isMcp = false) {
   } catch { return null; }
 }
 
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
-
-async function getAiVerdict(context, tier, isMcp = false) {
+async function getAiVerdict(context, tier, isTool = false) {
   const ollamaUrl    = process.env.OLLAMA_URL;
   const ollamaModel = process.env.OLLAMA_MODEL || 'glm-5.1:cloud';
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
   if (ollamaUrl) {
-    const v = await callOllama(ollamaUrl, ollamaModel, context, tier, isMcp);
+    const v = await callOllama(ollamaUrl, ollamaModel, context, tier, isTool);
     return v ? { verdict: v, backend: `Ollama - ${ollamaModel}` } : null;
   }
   if (anthropicKey) {
-    const v = await callClaude(anthropicKey, context, tier, isMcp);
+    const v = await callClaude(anthropicKey, context, tier, isTool);
     return v ? { verdict: v, backend: `Anthropic API - ${CLAUDE_MODEL}` } : null;
   }
   return null;
@@ -428,7 +429,6 @@ async function main() {
       const vAsk    = () => verbose ? `[plugin-auto] ⚠ ask   — ${preview(70)}`   : undefined;
       const vDeny   = () => verbose ? `[plugin-auto] ⛔ deny  — ${preview(70)}`   : undefined;
 
-      const isMcp     = toolName.startsWith('mcp__');
       const isBash    = toolName === 'Bash';
       const aiContext = isBash ? cmd : { toolName, toolInput };
 

