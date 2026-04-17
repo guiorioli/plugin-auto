@@ -26,6 +26,8 @@ const ALWAYS_ALLOW_TOOLS = new Set([
   'Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch',
   'Write', 'Edit', 'NotebookEdit',
   'ToolSearch',
+  // Task management — internal Claude Code state, no external side-effects
+  'TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList', 'TaskOutput', 'TaskStop',
 ]);
 
 // ─── MCP tool classification ────────────────────────────────────────────────────
