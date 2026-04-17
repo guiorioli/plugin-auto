@@ -123,6 +123,40 @@ for (const tool of ['Agent', 'TaskCreate', 'UnknownTool']) {
   assert(tool, run(tool, {}), 'ask');
 }
 
+// ── MCP tools ALLOW (prefixos read-only) ──────────────────────────────────────
+console.log('\n── MCP tools ALLOW ──────────────────────────────────');
+const MCP_ALLOW = [
+  'mcp__example-server__query_context_engine',
+  'mcp__example-server__read_document',
+  'mcp__server__list_files',
+  'mcp__server__get_user',
+  'mcp__server__search_records',
+  'mcp__server__fetch_data',
+  'mcp__server__describe_schema',
+  'mcp__server__find_issues',
+  'mcp__server__view_dashboard',
+  'mcp__server__check_status',
+  'mcp__claude_ai_Excalidraw__read_checkpoint',
+  'mcp__claude_ai_Excalidraw__read_me',
+];
+for (const tool of MCP_ALLOW) assert(tool, run(tool, {}), 'allow');
+
+// ── MCP tools ASK (write/generate/other) ─────────────────────────────────────
+console.log('\n── MCP tools ASK ────────────────────────────────────');
+const MCP_ASK = [
+  'mcp__example-server__model_generation',
+  'mcp__example-server__report_feedback',
+  'mcp__claude_ai_Excalidraw__create_view',
+  'mcp__claude_ai_Excalidraw__export_to_excalidraw',
+  'mcp__claude_ai_Excalidraw__save_checkpoint',
+  'mcp__claude_ai_Gamma__authenticate',
+  'mcp__claude_ai_Microsoft_365__authenticate',
+  'mcp__server__delete_record',
+  'mcp__server__update_user',
+  'mcp__server__send_email',
+];
+for (const tool of MCP_ASK) assert(tool, run(tool, {}), 'ask');
+
 console.log(`\n─────────────────────────────────────────────────────`);
 console.log(`  ${pass} passou  |  ${fail} falhou\n`);
 process.exit(fail > 0 ? 1 : 0);

@@ -23,6 +23,7 @@ O hook deve classificar cada chamada de ferramenta em três categorias:
 As seguintes ferramentas são sempre aprovadas automaticamente:
 - `Read`, `Glob`, `Grep`, `WebSearch`, `WebFetch` — operações de leitura pura
 - `Write`, `Edit`, `NotebookEdit` — escrita de arquivos (fluxo normal de desenvolvimento)
+- `ToolSearch` — busca de schemas de ferramentas (somente leitura interna)
 
 ### RF-04 — Comandos Bash Seguros (allow)
 Comandos Bash que correspondem a padrões de leitura/inspeção são aprovados:
@@ -120,6 +121,17 @@ Comandos classificados como `deny` NÃO devem ser silenciosamente bloqueados. Em
 - O default da dialog de confirmação é "Não" (usuário precisa confirmar ativamente)
 - Permite override manual para falso-positivos
 - Se AI avaliou como seguro → `allow` (sem prompt)
+
+### RF-22 — Classificação Estática de MCP Tools
+MCP tools (ferramentas com prefixo `mcp__<server>__`) devem ser classificadas pelo nome da operação:
+- Operações **read-only** → `allow`: `query_*`, `read_*`, `list_*`, `get_*`, `search_*`, `fetch_*`, `describe_*`, `show_*`, `explain_*`, `check_*`, `find_*`, `view_*`
+- Demais operações → `ask` (escrita, geração, autenticação, etc.)
+
+### RF-23 — Avaliação AI para MCP Tools
+Para MCP tools classificadas como `ask`, o hook deve consultar o backend AI (Ollama ou Anthropic):
+- Envia nome da tool e input truncado (300 chars) ao modelo com prompt dedicado (`MCP_SYSTEM_PROMPT`)
+- Se AI avaliar como seguro → `allow`; caso contrário → mantém `ask`
+- Fallback seguro: sem AI, mantém `ask`
 
 ---
 
