@@ -127,11 +127,14 @@ MCP tools (ferramentas com prefixo `mcp__<server>__`) devem ser classificadas pe
 - Operações **read-only** → `allow`: `query_*`, `read_*`, `list_*`, `get_*`, `search_*`, `fetch_*`, `describe_*`, `show_*`, `explain_*`, `check_*`, `find_*`, `view_*`
 - Demais operações → `ask` (escrita, geração, autenticação, etc.)
 
-### RF-23 — Avaliação AI para MCP Tools
-Para MCP tools classificadas como `ask`, o hook deve consultar o backend AI (Ollama ou Anthropic):
-- Envia nome da tool e input truncado (300 chars) ao modelo com prompt dedicado (`MCP_SYSTEM_PROMPT`)
+### RF-23 — Avaliação AI para ferramentas não-Bash no tier ask
+Para qualquer ferramenta (MCP ou interna) classificada como `ask`, o hook deve consultar o backend AI:
+- Envia `toolName` e `toolInput` truncado (300 chars) ao modelo com `TOOL_SYSTEM_PROMPT`
 - Se AI avaliar como seguro → `allow`; caso contrário → mantém `ask`
 - Fallback seguro: sem AI, mantém `ask`
+
+### RF-24 — Prompt genérico para avaliação de ferramentas (`TOOL_SYSTEM_PROMPT`)
+O prompt enviado ao modelo para ferramentas não-Bash deve ser genérico o suficiente para cobrir MCP tools, ferramentas internas (`Agent`, `TaskCreate`, etc.) e qualquer futura ferramenta desconhecida — não deve mencionar MCP especificamente.
 
 ---
 
