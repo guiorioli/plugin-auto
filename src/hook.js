@@ -421,7 +421,7 @@ async function main() {
   process.stdin.on('data', (c) => chunks.push(c));
   process.stdin.on('end', async () => {
     try {
-      const raw = chunks.join('').trim();
+      const raw = chunks.join('').replace(/\r/g, '').trim();
       if (!raw) { process.exit(0); return; }
 
       const { tool_name: toolName, tool_input: toolInput } = JSON.parse(raw);
