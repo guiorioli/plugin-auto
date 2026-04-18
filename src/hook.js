@@ -484,8 +484,11 @@ async function main() {
           if (verbose) process.stderr.write(reason + '\n');
           process.stdout.write(buildOutput('ask', reason) + '\n');
         } else {
-          if (verbose) process.stderr.write(vAsk() + '\n');
-          process.stdout.write(buildOutput('ask', vAsk()) + '\n');
+          const noAiReason = canCallAi
+            ? `[plugin-auto] ⚠ ask — AI unavailable (static rule flagged: ${preview(70)})`
+            : vAsk();
+          if (verbose) process.stderr.write(noAiReason + '\n');
+          process.stdout.write(buildOutput('ask', noAiReason) + '\n');
         }
       }
 
