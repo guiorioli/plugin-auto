@@ -317,18 +317,18 @@ function httpRequest(lib, options, payload) {
   return new Promise((resolve) => {
     let settled = false;
     const settle = (v) => { if (!settled) { settled = true; resolve(v); } };
-    const timer = setTimeout(() => settle(null), 10000);
+    const timer = setTimeout(() => settle({ timedOut: true }), 20000);
 
     const req = lib.request(options, (res) => {
       const parts = [];
       res.on('data', (c) => parts.push(c));
       res.on('end', () => {
         clearTimeout(timer);
-        try { settle(Buffer.concat(parts).toString('utf-8')); }
-        catch { settle(null); }
+        try { settle({ body: Buffer.concat(parts).toString('utf-8') }); }
+        catch { settle({ error: true }); }
       });
     });
-    req.on('error', () => { clearTimeout(timer); settle(null); });
+    req.on('error', () => { clearTimeout(timer); settle({ error: true }); });
     req.write(payload);
     req.end();
   });
@@ -349,7 +349,7 @@ async function callClaude(apiKey, context, tier, isTool = false) {
     system: sysPrompt,
     messages: [{ role: 'user', content: userMsg }],
   });
-  const body = await httpRequest(https, {
+  const res = await httpRequest(https, {
     hostname: 'api.anthropic.com',
     path: '/v1/messages',
     method: 'POST',
@@ -360,10 +360,11 @@ async function callClaude(apiKey, context, tier, isTool = false) {
       'Content-Length': Buffer.byteLength(payload),
     },
   }, payload);
-  if (!body) return null;
+  if (res.timedOut) return { unavailable: 'timeout' };
+  if (res.error)    return { unavailable: 'error' };
   try {
-    return parseVerdict(JSON.parse(body)?.content?.[0]?.text);
-  } catch { return null; }
+    return { verdict: parseVerdict(JSON.parse(res.body)?.content?.[0]?.text) };
+  } catch { return { unavailable: 'error' }; }
 }
 
 async function callOllama(baseUrl, model, context, tier, isTool = false) {
@@ -381,7 +382,7 @@ async function callOllama(baseUrl, model, context, tier, isTool = false) {
   });
   const url = new URL('/api/chat', baseUrl);
   const lib = url.protocol === 'https:' ? https : http;
-  const body = await httpRequest(lib, {
+  const res = await httpRequest(lib, {
     hostname: url.hostname,
     port: url.port || (url.protocol === 'https:' ? 443 : 80),
     path: url.pathname,
@@ -391,24 +392,29 @@ async function callOllama(baseUrl, model, context, tier, isTool = false) {
       'Content-Length': Buffer.byteLength(payload),
     },
   }, payload);
-  if (!body) return null;
+  if (res.timedOut) return { unavailable: 'timeout' };
+  if (res.error)    return { unavailable: 'error' };
   try {
-    return parseVerdict(JSON.parse(body)?.message?.content);
-  } catch { return null; }
+    return { verdict: parseVerdict(JSON.parse(res.body)?.message?.content) };
+  } catch { return { unavailable: 'error' }; }
 }
 
 async function getAiVerdict(context, tier, isTool = false) {
-  const ollamaUrl    = process.env.OLLAMA_URL;
+  const ollamaUrl   = process.env.OLLAMA_URL;
   const ollamaModel = process.env.OLLAMA_MODEL || 'glm-5.1:cloud';
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
   if (ollamaUrl) {
-    const v = await callOllama(ollamaUrl, ollamaModel, context, tier, isTool);
-    return v ? { verdict: v, backend: `Ollama - ${ollamaModel}` } : null;
+    const r = await callOllama(ollamaUrl, ollamaModel, context, tier, isTool);
+    return r.verdict
+      ? { verdict: r.verdict, backend: `Ollama - ${ollamaModel}` }
+      : { unavailable: r.unavailable, backend: `Ollama - ${ollamaModel}` };
   }
   if (anthropicKey) {
-    const v = await callClaude(anthropicKey, context, tier, isTool);
-    return v ? { verdict: v, backend: `Anthropic API - ${CLAUDE_MODEL}` } : null;
+    const r = await callClaude(anthropicKey, context, tier, isTool);
+    return r.verdict
+      ? { verdict: r.verdict, backend: `Anthropic API - ${CLAUDE_MODEL}` }
+      : { unavailable: r.unavailable, backend: `Anthropic API - ${CLAUDE_MODEL}` };
   }
   return null;
 }
@@ -462,8 +468,11 @@ async function main() {
           if (verbose) process.stderr.write(reason + '\n');
           process.stdout.write(buildOutput('ask', reason) + '\n');
         } else {
+          const aiNote = ai?.unavailable === 'timeout' ? ` (AI timed out: ${ai.backend})`
+                       : ai?.unavailable === 'error'   ? ` (AI error: ${ai.backend})`
+                       : '';
           const reason =
-            `[plugin-auto] ⛔ deny  — destructive pattern detected\n` +
+            `[plugin-auto] ⛔ deny  — destructive pattern detected${aiNote}\n` +
             `  Command: ${cmd.substring(0, 100)}\n` +
             `  This action may cause irreversible damage.\n` +
             `  Confirm ONLY if false positive.`;
@@ -484,9 +493,10 @@ async function main() {
           if (verbose) process.stderr.write(reason + '\n');
           process.stdout.write(buildOutput('ask', reason) + '\n');
         } else {
-          const noAiReason = canCallAi
-            ? `[plugin-auto] ⚠ ask — AI unavailable (static rule flagged: ${preview(70)})`
-            : vAsk();
+          const noAiReason = !canCallAi ? vAsk()
+            : ai?.unavailable === 'timeout' ? `[plugin-auto] ⚠ ask — AI timed out (${ai.backend}): ${preview(70)}`
+            : ai?.unavailable === 'error'   ? `[plugin-auto] ⚠ ask — AI error (${ai.backend}): ${preview(70)}`
+            : `[plugin-auto] ⚠ ask — no AI backend configured (static rule flagged: ${preview(70)})`;
           if (verbose) process.stderr.write(noAiReason + '\n');
           process.stdout.write(buildOutput('ask', noAiReason) + '\n');
         }
