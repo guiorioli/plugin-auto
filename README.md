@@ -2,7 +2,7 @@
 
 A [Claude Code](https://claude.ai/code) `PreToolUse` hook that adds intelligent permission evaluation to every tool call. Safe operations are approved automatically, risky ones are confirmed by the user, and destructive commands are blocked — without interrupting routine development work.
 
-When an AI backend is configured (Anthropic API or a local Ollama instance), commands flagged as `ask` or `deny` are sent to an AI model for a second opinion before the final decision, reducing false positives.
+When an AI backend is configured (Anthropic API or an Ollama instance), commands flagged as `ask` or `deny` are sent to an AI model for a second opinion before the final decision, reducing false positives.
 
 ## How it works
 
@@ -74,7 +74,7 @@ The installer will:
 | Backend | Setup | Cost |
 |---------|-------|------|
 | **Anthropic API** | Get a key at [console.anthropic.com](https://console.anthropic.com) → API Keys → Create Key | ~$0.01/month typical usage (Haiku model) |
-| **Ollama** (local) | Install [Ollama](https://ollama.com), run a model locally | Free |
+| **Ollama** (local or cloud) | Install [Ollama](https://ollama.com), run a model locally — or use Ollama's hosted models (free tier available, paid plans for higher usage) | Free / varies |
 | **None** | No extra config needed | Free |
 
 Priority order: `OLLAMA_URL` → `ANTHROPIC_API_KEY` → static rules only.
