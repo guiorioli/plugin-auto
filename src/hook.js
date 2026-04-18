@@ -401,7 +401,7 @@ async function callOllama(baseUrl, model, context, tier, isTool = false) {
 
 async function getAiVerdict(context, tier, isTool = false) {
   const ollamaUrl   = process.env.OLLAMA_URL;
-  const ollamaModel = process.env.OLLAMA_MODEL || 'glm-5.1:cloud';
+  const ollamaModel = process.env.OLLAMA_MODEL || 'glm-4.6:cloud';
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
   if (ollamaUrl) {
