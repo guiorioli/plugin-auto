@@ -75,15 +75,19 @@ O script de instalação deve suportar `node install.js uninstall` para remover 
 ### RF-11 — Validação Inteligente via Claude API (ask tier)
 Para comandos Bash classificados como `ask`, o hook deve consultar a Claude API antes de devolver a decisão:
 - Se Claude avaliar como seguro → decisão muda para `allow` (auto-aprovado)
-- Se Claude avaliar como inseguro ou API indisponível → mantém `ask` (prompt ao usuário)
+- Se Claude avaliar como inseguro → mantém `ask` (prompt ao usuário)
+- Se API indisponível, timeout ou sem backend configurado → sem output (Claude Code aplica comportamento padrão nativo, incluindo "always allow" / "never ask again")
 
 ### RF-12 — Validação Inteligente via Claude API (deny tier)
 Para comandos Bash classificados como `deny`, o hook deve consultar a Claude API para reduzir falso-positivos:
 - Se Claude avaliar como seguro → decisão muda para `allow`
-- Se Claude avaliar como inseguro ou API indisponível → mantém `deny`
+- Se Claude avaliar como inseguro ou API indisponível → mantém `ask` com aviso ⛔
 
-### RF-13 — Fallback Seguro sem API Key
-Se `ANTHROPIC_API_KEY` não estiver definida, o hook deve operar sem a validação Claude (comportamento original: `ask` → prompt, `deny` → bloqueio).
+### RF-13 — Fallback sem AI Backend
+Se nenhum backend AI estiver configurado (`ANTHROPIC_API_KEY` e `OLLAMA_URL` ausentes):
+- Tier `allow` → aprovação automática (sem mudança)
+- Tier `ask` → sem output; Claude Code aplica seu fluxo nativo de permissões (suporta "never ask again" do usuário)
+- Tier `deny` → exibe prompt de override ⛔ (comportamento inalterado)
 
 ### RF-14 — Resistência a Prompt Injection
 O system prompt enviado à API deve instruir o modelo a ignorar comandos/instruções embutidas na string do comando avaliado.

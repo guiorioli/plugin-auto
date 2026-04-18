@@ -13,6 +13,7 @@ function run(toolName, toolInput) {
       encoding: 'utf-8',
       env: { ...process.env, ANTHROPIC_API_KEY: '', OLLAMA_URL: '' },
     }).trim();
+    if (!out) return 'default'; // no output → Claude Code's native permission flow
     return JSON.parse(out).hookSpecificOutput.permissionDecision;
   } catch (e) {
     return 'ERROR:' + e.message.split('\n')[0];
@@ -71,34 +72,34 @@ for (const [cmd, exp] of SAFE_CMD) assert(cmd, run('Bash', { command: cmd }), ex
 // ── Bash ASK ──────────────────────────────────────────────────────────────────
 console.log('\n── Bash ASK ─────────────────────────────────────────');
 const ASK_CMD = [
-  ['git push',                  'ask'],
-  ['git commit -m "fix"',       'ask'],
-  ['git merge main',            'ask'],
-  ['npm install',               'ask'],
-  ['npm install lodash',        'ask'],
-  ['apt install curl',          'ask'],
-  ['brew install wget',         'ask'],
-  ['yum install nginx',         'ask'],
-  ['pip install requests',      'ask'],
-  ['rm file.txt',               'ask'],
-  ['rm -rf node_modules',       'ask'],
-  ['docker run nginx',          'ask'],
-  ['ssh user@server.com',       'ask'],
-  ['scp file.txt user@host:/',  'ask'],
-  ['rsync -av src/ dest/',      'ask'],
-  ['wget https://example.com',  'ask'],
-  ['curl -O https://example.com/file.zip', 'ask'],
-  ['tar xvf archive.tar.gz',   'ask'],
-  ['unzip release.zip',         'ask'],
-  ['git clone https://github.com/user/repo', 'ask'],
-  ['sed -i "s/x/y/" config.json',  'ask'],
-  ['sed -ni "/pattern/p" file.txt','ask'],
-  ['cp src.txt dest.txt',       'ask'],
-  ['ln -s /usr/bin/node node',  'ask'],
-  ['systemctl restart nginx',   'ask'],
-  ['service nginx stop',        'ask'],
-  ['kubectl apply -f k8s.yaml', 'ask'],
-  ['terraform apply',           'ask'],
+  ['git push',                  'default'],
+  ['git commit -m "fix"',       'default'],
+  ['git merge main',            'default'],
+  ['npm install',               'default'],
+  ['npm install lodash',        'default'],
+  ['apt install curl',          'default'],
+  ['brew install wget',         'default'],
+  ['yum install nginx',         'default'],
+  ['pip install requests',      'default'],
+  ['rm file.txt',               'default'],
+  ['rm -rf node_modules',       'default'],
+  ['docker run nginx',          'default'],
+  ['ssh user@server.com',       'default'],
+  ['scp file.txt user@host:/',  'default'],
+  ['rsync -av src/ dest/',      'default'],
+  ['wget https://example.com',  'default'],
+  ['curl -O https://example.com/file.zip', 'default'],
+  ['tar xvf archive.tar.gz',   'default'],
+  ['unzip release.zip',         'default'],
+  ['git clone https://github.com/user/repo', 'default'],
+  ['sed -i "s/x/y/" config.json',  'default'],
+  ['sed -ni "/pattern/p" file.txt','default'],
+  ['cp src.txt dest.txt',       'default'],
+  ['ln -s /usr/bin/node node',  'default'],
+  ['systemctl restart nginx',   'default'],
+  ['service nginx stop',        'default'],
+  ['kubectl apply -f k8s.yaml', 'default'],
+  ['terraform apply',           'default'],
 ];
 for (const [cmd, exp] of ASK_CMD) assert(cmd, run('Bash', { command: cmd }), exp);
 
@@ -116,14 +117,14 @@ for (const [cmd, exp] of DENY_INPUTS) assert(cmd, run('Bash', { command: cmd }),
 
 // ── Ferramentas ALLOW ─────────────────────────────────────────────────────────
 console.log('\n── Ferramentas ALLOW ────────────────────────────────');
-for (const tool of ['Read', 'Glob', 'Grep', 'Write', 'Edit', 'NotebookEdit']) {
+for (const tool of ['Read', 'Glob', 'Grep', 'Write', 'Edit', 'NotebookEdit', 'Agent', 'TaskCreate']) {
   assert(tool, run(tool, {}), 'allow');
 }
 
-// ── Ferramentas ASK ───────────────────────────────────────────────────────────
-console.log('\n── Ferramentas ASK ──────────────────────────────────');
-for (const tool of ['Agent', 'TaskCreate', 'UnknownTool']) {
-  assert(tool, run(tool, {}), 'ask');
+// ── Ferramentas DEFAULT (ask tier, no AI → native permission flow) ─────────────
+console.log('\n── Ferramentas DEFAULT ──────────────────────────────');
+for (const tool of ['UnknownTool']) {
+  assert(tool, run(tool, {}), 'default');
 }
 
 // ── MCP tools ALLOW (prefixos read-only) ──────────────────────────────────────
@@ -144,8 +145,8 @@ const MCP_ALLOW = [
 ];
 for (const tool of MCP_ALLOW) assert(tool, run(tool, {}), 'allow');
 
-// ── MCP tools ASK (write/generate/other) ─────────────────────────────────────
-console.log('\n── MCP tools ASK ────────────────────────────────────');
+// ── MCP tools DEFAULT (ask tier, no AI → native permission flow) ──────────────
+console.log('\n── MCP tools DEFAULT ────────────────────────────────');
 const MCP_ASK = [
   'mcp__example-server__model_generation',
   'mcp__example-server__report_feedback',
@@ -158,7 +159,7 @@ const MCP_ASK = [
   'mcp__server__update_user',
   'mcp__server__send_email',
 ];
-for (const tool of MCP_ASK) assert(tool, run(tool, {}), 'ask');
+for (const tool of MCP_ASK) assert(tool, run(tool, {}), 'default');
 
 console.log(`\n─────────────────────────────────────────────────────`);
 console.log(`  ${pass} passou  |  ${fail} falhou\n`);

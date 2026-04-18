@@ -493,12 +493,14 @@ async function main() {
           if (verbose) process.stderr.write(reason + '\n');
           process.stdout.write(buildOutput('ask', reason) + '\n');
         } else {
-          const noAiReason = !canCallAi ? vAsk()
-            : ai?.unavailable === 'timeout' ? `[plugin-auto] ⚠ ask — AI timed out (${ai.backend}): ${preview(70)}`
-            : ai?.unavailable === 'error'   ? `[plugin-auto] ⚠ ask — AI error (${ai.backend}): ${preview(70)}`
-            : `[plugin-auto] ⚠ ask — no AI backend configured (static rule flagged: ${preview(70)})`;
-          if (verbose) process.stderr.write(noAiReason + '\n');
-          process.stdout.write(buildOutput('ask', noAiReason) + '\n');
+          // No AI configured, timed out, or errored — defer to Claude Code's native
+          // permission system, which supports "always allow" / "never ask again".
+          const note = !canCallAi              ? 'no command'
+            : ai === null                      ? 'no AI backend'
+            : ai?.unavailable === 'timeout'    ? `AI timed out (${ai.backend})`
+            :                                    `AI error (${ai.backend})`;
+          if (verbose) process.stderr.write(`[plugin-auto] → default — ${note}: ${preview(70)}\n`);
+          // No stdout output → Claude Code applies its own permission flow.
         }
       }
 

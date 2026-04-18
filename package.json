@@ -1,6 +1,6 @@
 {
   "name": "plugin-auto",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Claude Code hook: smart permission evaluation for tool calls",
   "main": "src/hook.js",
   "scripts": {

@@ -12,22 +12,24 @@ Bash command
     ├─ DENY pattern? ──► [AI backend?] ──► unsafe / no AI → ⛔ prompt (override available)
     │                                              safe    → allow
     │
-    ├─ ASK pattern?  ──► [AI backend?] ──► unsafe / no AI → prompt user
-    │                                              safe    → allow
+    ├─ ASK pattern?  ──► [AI backend?] ──► unsafe            → prompt user
+    │                                      safe              → allow
+    │                                      no AI / timeout   → Claude Code default
     │
     ├─ ALLOW pattern? ─► allow  (no AI call)
     │
-    └─ unknown        ──► [AI backend?] ──► unsafe / no AI → prompt user
-                                                   safe    → allow
+    └─ unknown        ──► [AI backend?] ──► unsafe            → prompt user
+                                            safe              → allow
+                                            no AI / timeout   → Claude Code default
 ```
 
 | Decision | No AI backend | With AI backend |
 |----------|--------------|-----------------|
 | `allow`  | Auto-approved (no API call) | Auto-approved (no API call) |
-| `ask`    | Prompts user | AI checks → safe: auto-approve / unsafe: prompt user |
+| `ask`    | Claude Code default (supports "never ask again") | AI checks → safe: auto-approve / unsafe: prompt user / timeout·error: Claude Code default |
 | `deny`   | ⛔ Override prompt (default: deny) | AI checks → safe: auto-approve / unsafe: ⛔ override prompt |
 
-Non-Bash tools (`Agent`, unknown MCP tools, etc.) that aren't in the always-allow list always go through the `ask` path.
+Non-Bash tools (`Agent`, unknown MCP tools, etc.) that aren't in the always-allow list go through the `ask` path.
 
 ## Decision tiers
 
