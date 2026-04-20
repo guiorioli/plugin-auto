@@ -12,21 +12,23 @@ Bash command
     ├─ DENY pattern? ──► [AI backend?] ──► unsafe / no AI → ⛔ prompt (override available)
     │                                              safe    → allow
     │
-    ├─ ASK pattern?  ──► [AI backend?] ──► unsafe            → prompt user
-    │                                      safe              → allow
-    │                                      no AI / timeout   → Claude Code default
+    ├─ ASK pattern?  ──► [AI backend?] ──► unsafe              → prompt user
+    │                                      safe                → allow
+    │                                      no AI               → Claude Code default
+    │                                      timeout / error     → prompt user (⚠ error shown)
     │
     ├─ ALLOW pattern? ─► allow  (no AI call)
     │
-    └─ unknown        ──► [AI backend?] ──► unsafe            → prompt user
-                                            safe              → allow
-                                            no AI / timeout   → Claude Code default
+    └─ unknown        ──► [AI backend?] ──► unsafe              → prompt user
+                                            safe                → allow
+                                            no AI               → Claude Code default
+                                            timeout / error     → prompt user (⚠ error shown)
 ```
 
 | Decision | No AI backend | With AI backend |
 |----------|--------------|-----------------|
 | `allow`  | Auto-approved (no API call) | Auto-approved (no API call) |
-| `ask`    | Claude Code default (supports "never ask again") | AI checks → safe: auto-approve / unsafe: prompt user / timeout·error: Claude Code default |
+| `ask`    | Claude Code default (supports "never ask again") | AI checks → safe: auto-approve / unsafe: prompt user / no AI: Claude Code default / timeout·error: prompt user (⚠ error shown) |
 | `deny`   | ⛔ Override prompt (default: deny) | AI checks → safe: auto-approve / unsafe: ⛔ override prompt |
 
 Non-Bash tools (`Agent`, unknown MCP tools, etc.) that aren't in the always-allow list go through the `ask` path.
@@ -110,7 +112,7 @@ Environment variables (`ANTHROPIC_API_KEY`, `OLLAMA_URL`, etc.) are preserved an
 ## Tests
 
 ```bash
-node test.js   # 92 cases, 0 failures
+node test.js   # 95 cases, 0 failures
 ```
 
 ## Project structure
@@ -137,7 +139,7 @@ Claude Code spawns `src/hook.js` as a subprocess before every tool call. The hoo
 { "hookSpecificOutput": { "hookEventName": "PreToolUse", "permissionDecision": "allow" } }
 ```
 
-For `ask`/`deny` commands with an AI backend configured, the hook calls the AI API (timeout: 10s) and upgrades the decision to `allow` if the model confirms the command is safe.
+For `ask`/`deny` commands with an AI backend configured, the hook calls the AI API (timeout: 20s) and upgrades the decision to `allow` if the model confirms the command is safe.
 
 Any internal error (network failure, parse error, timeout) leaves the original decision intact — the hook never blocks execution due to its own failures.
 
