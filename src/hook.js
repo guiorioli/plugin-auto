@@ -318,7 +318,7 @@ function httpRequest(lib, options, payload) {
   return new Promise((resolve) => {
     let settled = false;
     const settle = (v) => { if (!settled) { settled = true; resolve(v); } };
-    const timer = setTimeout(() => settle({ timedOut: true }), 20000);
+    const timer = setTimeout(() => settle({ timedOut: true }), 12000);
 
     const req = lib.request(options, (res) => {
       const parts = [];

@@ -160,7 +160,7 @@ async function install() {
       hooks: [{
         type: 'command',
         command: HOOK_COMMAND,
-        timeout: 15,
+        timeout: 20,
         statusMessage: '[plugin-auto] checking permission',
       }],
     });
