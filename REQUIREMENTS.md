@@ -140,6 +140,9 @@ Para qualquer ferramenta (MCP ou interna) classificada como `ask`, o hook deve c
 ### RF-24 — Prompt genérico para avaliação de ferramentas (`TOOL_SYSTEM_PROMPT`)
 O prompt enviado ao modelo para ferramentas não-Bash deve ser genérico o suficiente para cobrir MCP tools, ferramentas internas (`Agent`, `TaskCreate`, etc.) e qualquer futura ferramenta desconhecida — não deve mencionar MCP especificamente.
 
+### RF-25 — Contexto do diretório do projeto nos prompts de avaliação AI
+Os prompts enviados ao backend AI (`SYSTEM_PROMPT` e `TOOL_SYSTEM_PROMPT`) devem incluir o diretório atual do projeto (`process.cwd()`) para que o modelo possa distinguir caminhos absolutos dentro do projeto (seguros) de caminhos fora do projeto (cautelosos). Sem esse contexto, o modelo tende a tratar qualquer caminho absoluto como arriscado, gerando falsos positivos.
+
 ---
 
 ## Requisitos Não-Funcionais
