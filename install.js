@@ -87,16 +87,16 @@ async function promptBackend(rl, settings) {
 
   } else if (choice === '2') {
     if (hasOllamaUrl) {
-      console.log(`\n  Ollama already configured: ${settings.env.OLLAMA_URL} (model: ${settings.env.OLLAMA_MODEL || 'qwen3-coder-next:cloud'}).`);
+      console.log(`\n  Ollama already configured: ${settings.env.OLLAMA_URL} (model: ${settings.env.OLLAMA_MODEL || 'gemma3:27b-cloud'}).`);
       const replace = await ask(rl, '  Reconfigure? [y/N]: ');
       if (replace.toLowerCase() !== 'y') return;
     }
     const url   = await ask(rl, '\n  Ollama URL [enter for http://localhost:11434]: ');
-    const model = await ask(rl, '  Ollama model [enter for qwen3-coder-next:cloud]: ');
+    const model = await ask(rl, '  Ollama model [enter for gemma3:27b-cloud]: ');
     if (!settings.env) settings.env = {};
     delete settings.env.ANTHROPIC_API_KEY;
     settings.env.OLLAMA_URL   = url   || 'http://localhost:11434';
-    settings.env.OLLAMA_MODEL = model || 'qwen3-coder-next:cloud';
+    settings.env.OLLAMA_MODEL = model || 'gemma3:27b-cloud';
     console.log(`  Ollama configured: ${settings.env.OLLAMA_URL} (${settings.env.OLLAMA_MODEL}).`);
 
   } else if (choice === '3') {
@@ -181,7 +181,7 @@ async function install() {
   writeSettings(settings);
 
   const backend = settings?.env?.OLLAMA_URL
-    ? `Ollama (${settings.env.OLLAMA_URL}, model: ${settings.env.OLLAMA_MODEL || 'qwen3-coder-next:cloud'})`
+    ? `Ollama (${settings.env.OLLAMA_URL}, model: ${settings.env.OLLAMA_MODEL || 'gemma3:27b-cloud'})`
     : settings?.env?.ANTHROPIC_API_KEY
       ? 'Anthropic API (Haiku)'
       : 'None (static rules only)';

@@ -2,26 +2,41 @@
 # ask.sh — send a bash command through hook.js for AI evaluation
 # Usage: ./ask.sh "npm install lodash"
 #        ./ask.sh rm -rf dist/
+#        ./ask.sh --model=claude-haiku-4-5-20251001 "npm install"
+#        ./ask.sh --dir=/path/to/project "npm test"
+#        ./ask.sh --dir=/custom/project/dir "rm -rf node_modules" /another/dir
 
 set -euo pipefail
 
 SCRIPT_START=$(date +%s%3N)
 
-FORCE_MODEL=""
-ARGS=()
+# Parse args: separate --model=, --dir=, project_dir, and command
+MODEL_ARG=""
+DIR_ARG=""
+PROJECT_DIR_ARG=""
+COMMAND_ARGS=()
 for arg in "$@"; do
   case "$arg" in
-    --model=*) FORCE_MODEL="${arg#--model=}" ;;
-    *) ARGS+=("$arg") ;;
+    --model=*) MODEL_ARG="$arg" ;;
+    --dir=*)   DIR_ARG="${arg#--dir=}" ;;
+    *)
+      if [ -z "$PROJECT_DIR_ARG" ] && [ -d "$arg" ]; then
+        PROJECT_DIR_ARG="$arg"
+      else
+        COMMAND_ARGS+=("$arg")
+      fi
+      ;;
   esac
 done
 
-if [ ${#ARGS[@]} -eq 0 ]; then
-  echo "Usage: $0 [--model=<name>] <command>" >&2
+PROJECT_DIR="${DIR_ARG:-${PROJECT_DIR_ARG:-$(cd "$(dirname "$0")" && pwd)}}"
+COMMAND="${COMMAND_ARGS[*]:-}"
+if [ -z "$COMMAND" ]; then
+  echo "Usage: $0 [--model=<name>] [--dir=<path>] [--] <command> [project_dir]" >&2
   exit 1
 fi
 
-COMMAND="${ARGS[*]}"
+FORCE_MODEL="${MODEL_ARG#--model=}"
 HOOK="$(dirname "$0")/src/hook.js"
 SETTINGS="$HOME/.claude/settings.json"
 
@@ -45,8 +60,9 @@ if [ -f "$SETTINGS" ]; then
   fi
 fi
 
-INPUT=$(printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' \
-  "$(echo "$COMMAND" | sed 's/\\/\\\\/g; s/"/\\"/g')")
+INPUT=$(printf '{"tool_name":"Bash","tool_input":{"command":"%s"},"project_dir":"%s"}' \
+  "$(echo "$COMMAND" | sed 's/\\/\\\\/g; s/"/\\"/g')" \
+  "$(echo "$PROJECT_DIR" | sed 's/\\/\\\\/g; s/"/\\"/g')")
 
 if [ -n "$FORCE_MODEL" ]; then
   if [ -n "${OLLAMA_URL:-}" ]; then

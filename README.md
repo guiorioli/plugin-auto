@@ -78,7 +78,7 @@ The installer will:
 | Backend | Setup | Cost |
 |---------|-------|------|
 | **Anthropic API** | Get a key at [console.anthropic.com](https://console.anthropic.com) → API Keys → Create Key | ~$0.01/month typical usage (Haiku model) |
-| **Ollama** (local or cloud) | Install [Ollama](https://ollama.com), run a model locally — or use Ollama's hosted models (free tier available, paid plans for higher usage) | Free / varies |
+| **Ollama** (local or cloud) | Install [Ollama](https://ollama.com), run a model locally — or use Ollama's hosted models (free tier available, paid plans for higher usage). Default model: `gemma3:27b-cloud` | Free / varies |
 | **None** | No extra config needed | Free |
 
 Priority order: `OLLAMA_URL` → `ANTHROPIC_API_KEY` → static rules only.
