@@ -143,12 +143,19 @@ O prompt enviado ao modelo para ferramentas não-Bash deve ser genérico o sufic
 ### RF-25 — Contexto do diretório do projeto nos prompts de avaliação AI
 Os prompts enviados ao backend AI (`SYSTEM_PROMPT` e `TOOL_SYSTEM_PROMPT`) devem incluir o diretório atual do projeto (`process.cwd()`) para que o modelo possa distinguir caminhos absolutos dentro do projeto (seguros) de caminhos fora do projeto (cautelosos). Sem esse contexto, o modelo tende a tratar qualquer caminho absoluto como arriscado, gerando falsos positivos.
 
+### RF-26 — Backend Ollama Cloud API (via API key)
+O instalador deve oferecer uma opção de backend utilizando a API cloud da Ollama (`https://ollama.com`) via API key:
+- Exibir link para gerar a key: `https://ollama.com/settings/keys`
+- Informar sobre planos: Free (uso leve, 1 modelo simultâneo) e Pro ($20/mês, 50x mais uso)
+- Persistir `OLLAMA_URL=https://ollama.com`, `OLLAMA_API_KEY=<key>`, `OLLAMA_MODEL=gemma3:27b-cloud` em `settings.json`
+- O hook deve enviar `Authorization: Bearer <key>` nas requisições à API quando `OLLAMA_API_KEY` estiver configurada
+
 ---
 
 ## Requisitos Não-Funcionais
 
 ### RNF-01 — Performance
-Para comandos classificados como `allow`, o hook deve completar em menos de 100ms (lógica local). Para `ask`/`deny` com API key, o tempo adicional da chamada Claude é aceitável (até o timeout do hook de 15s).
+Para comandos classificados como `allow`, o hook deve completar em menos de 100ms (lógica local). Para `ask`/`deny` com API key, o tempo adicional da chamada AI é aceitável (até o timeout do hook de 20s).
 
 ### RNF-02 — Resiliência
 Erros no hook (parse failure, exceção JS) NÃO devem bloquear a execução. Em caso de falha, o hook deve sair com código 0 sem output, deixando o comportamento padrão do Claude Code acontecer.

@@ -320,7 +320,7 @@ function httpRequest(lib, options, payload) {
   return new Promise((resolve) => {
     let settled = false;
     const settle = (v) => { if (!settled) { settled = true; resolve(v); } };
-    const timer = setTimeout(() => settle({ timedOut: true }), 12000);
+    const timer = setTimeout(() => settle({ timedOut: true }), 20000);
 
     const req = lib.request(options, (res) => {
       const parts = [];
@@ -390,15 +390,18 @@ async function callOllama(baseUrl, model, context, tier, projectDir, isTool = fa
   });
   const url = new URL('/api/chat', baseUrl);
   const lib = url.protocol === 'https:' ? https : http;
+  const headers = {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(payload),
+  };
+  const apiKey = process.env.OLLAMA_API_KEY;
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
   const res = await httpRequest(lib, {
     hostname: url.hostname,
     port: url.port || (url.protocol === 'https:' ? 443 : 80),
     path: url.pathname,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(payload),
-    },
+    headers,
   }, payload);
   if (res.timedOut) return { unavailable: 'timeout' };
   if (res.error)    return { unavailable: 'error' };

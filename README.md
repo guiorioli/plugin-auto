@@ -77,11 +77,12 @@ The installer will:
 
 | Backend | Setup | Cost |
 |---------|-------|------|
+| **Ollama Cloud API** | Get a key at [ollama.com/settings/keys](https://ollama.com/settings/keys) — free tier available (light usage, 1 concurrent model); Pro ($20/mo, 50x more usage). Requires an Ollama account. | Free / Pro |
 | **Anthropic API** | Get a key at [console.anthropic.com](https://console.anthropic.com) → API Keys → Create Key | ~$0.01/month typical usage (Haiku model) |
-| **Ollama** (local or cloud) | Install [Ollama](https://ollama.com), run a model locally — or use Ollama's hosted models (free tier available, paid plans for higher usage). Default model: `gemma3:27b-cloud` | Free / varies |
+| **Ollama (local)** | Install [Ollama](https://ollama.com), run a model locally. Default model: `gemma3:27b-cloud` | Free |
 | **None** | No extra config needed | Free |
 
-Priority order: `OLLAMA_URL` → `ANTHROPIC_API_KEY` → static rules only.
+Priority order: `OLLAMA_URL` → `ANTHROPIC_API_KEY` → static rules only. When `OLLAMA_API_KEY` is set alongside `OLLAMA_URL`, it is sent as a Bearer token for authentication.
 
 ## Verbose mode
 
