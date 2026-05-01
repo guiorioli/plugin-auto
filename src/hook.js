@@ -446,8 +446,9 @@ async function main() {
       const decision = classifyTool(toolName, toolInput);
       const cmd     = toolInput?.command || '';
       const projectDir = projectDirArg || process.cwd();
-      const quiet   = !!process.env.PLUGIN_AUTO_QUIET;
-      const verbose = !quiet;
+      const quiet       = !!process.env.PLUGIN_AUTO_QUIET;
+      const verbose     = !quiet;
+      const denyDefault = !!process.env.PLUGIN_AUTO_DENY_DEFAULT;
 
       // Visible status on every hook call
       process.stderr.write('[plugin-auto] checking permission\n');
@@ -473,6 +474,10 @@ async function main() {
           const reason = `[plugin-auto] ✓ allow — AI override (${ai.backend})${aiNote}`;
           if (verbose) process.stderr.write(reason + '\n');
           process.stdout.write(buildOutput('allow', reason) + '\n');
+        } else if (denyDefault) {
+          // Native Claude Code flow — supports "don't ask again" but no custom warning
+          if (verbose) process.stderr.write(`[plugin-auto] → default — deny pattern: ${preview(70)}\n`);
+          // No stdout output → Claude Code applies its own permission flow.
         } else if (ai?.verdict === 'unsafe') {
           const aiNote = ai.reason ? `\n  AI reason: ${ai.reason}` : '';
           const reason =

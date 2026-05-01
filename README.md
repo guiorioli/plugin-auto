@@ -29,7 +29,9 @@ Bash command
 |----------|--------------|-----------------|
 | `allow`  | Auto-approved (no API call) | Auto-approved (no API call) |
 | `ask`    | Claude Code default (supports "never ask again") | AI checks → safe: auto-approve / unsafe: prompt user / no AI: Claude Code default / timeout·error: prompt user (⚠ error shown) |
-| `deny`   | ⛔ Override prompt (default: deny) | AI checks → safe: auto-approve / unsafe: ⛔ override prompt |
+| `deny`   | ⛔ Override prompt (default: deny) ¹ | AI checks → safe: auto-approve / unsafe: ⛔ override prompt ¹ |
+
+¹ Configurable — see [Deny behavior](#deny-behavior).
 
 Non-Bash tools (`Agent`, unknown MCP tools, etc.) that aren't in the always-allow list go through the `ask` path.
 
@@ -101,6 +103,38 @@ To hide labels (quiet mode), set `PLUGIN_AUTO_QUIET=1` in `~/.claude/settings.js
   "PLUGIN_AUTO_QUIET": "1"
 }
 ```
+
+## Deny behavior
+
+By default, blocked commands return `ask` with a ⛔ warning that includes the command and a manual override option, so you can confirm false positives:
+
+```
+[plugin-auto] ⛔ deny  — destructive pattern detected
+  Command: rm -rf /
+  This action may cause irreversible damage.
+  Confirm ONLY if false positive.
+```
+
+The downside is that `ask` does not support Claude Code's "don't ask again" option — every blocked command requires an active response.
+
+To enable "don't ask again", set `PLUGIN_AUTO_DENY_DEFAULT=1` in `~/.claude/settings.json`:
+
+```json
+"env": {
+  "PLUGIN_AUTO_DENY_DEFAULT": "1"
+}
+```
+
+With this flag, blocked commands fall back to Claude Code's native permission flow instead of showing the ⛔ message. The tradeoff: no context is shown about why the command was blocked.
+
+| Mode | "don't ask again" | ⛔ warning shown |
+|------|:-----------------:|:----------------:|
+| `ask` (default, recommended) | ✗ | ✓ |
+| `default` (`PLUGIN_AUTO_DENY_DEFAULT=1`) | ✓ | ✗ |
+
+> In both modes, if an AI backend is configured and evaluates the command as safe, it is auto-approved without any prompt.
+
+The installer (`node install.js`) walks you through this choice with a full explanation of the tradeoff.
 
 ## Uninstall
 

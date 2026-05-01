@@ -177,6 +177,43 @@ async function promptBackend(rl, settings) {
   }
 }
 
+async function promptDenyBehavior(rl, settings) {
+  const currentIsDefault = !!settings?.env?.PLUGIN_AUTO_DENY_DEFAULT;
+  const label = currentIsDefault ? 'default (native Claude Code flow)' : 'ask — ⛔ warning [recommended]';
+
+  console.log('\n  ┌─ DENY BEHAVIOR ────────────────────────────────────────────────────┐');
+  console.log('  │                                                                     │');
+  console.log('  │  What happens when a destructive command (rm -rf /, shutdown…)     │');
+  console.log('  │  is blocked by the deny tier.                                       │');
+  console.log('  │                                                                     │');
+  console.log('  │  (1) ask  [recommended]                                             │');
+  console.log('  │      Shows a ⛔ warning with the command and a manual override.    │');
+  console.log('  │      Explains why it was blocked. Downside: "don\'t ask again"     │');
+  console.log('  │      is not available — each blocked command requires a response.  │');
+  console.log('  │                                                                     │');
+  console.log('  │  (2) default                                                        │');
+  console.log('  │      Falls back to Claude Code\'s native permission flow.           │');
+  console.log('  │      Enables "don\'t ask again" for repeated commands.              │');
+  console.log('  │      Downside: the ⛔ warning message is not shown — the prompt    │');
+  console.log('  │      gives no context about why the command was blocked.           │');
+  console.log('  │                                                                     │');
+  console.log(`  │  Current: ${label.padEnd(50)}│`);
+  console.log('  └─────────────────────────────────────────────────────────────────────┘\n');
+
+  const answer = await ask(rl, '  Deny behavior [1/2, default: 1]: ');
+  if (!settings.env) settings.env = {};
+
+  if (answer === '2') {
+    settings.env.PLUGIN_AUTO_DENY_DEFAULT = '1';
+    console.log('  Deny mode: default — native flow, "don\'t ask again" available.');
+  } else if (answer === '1' || answer === '') {
+    delete settings.env.PLUGIN_AUTO_DENY_DEFAULT;
+    console.log('  Deny mode: ask — ⛔ warning with override option [recommended].');
+  } else {
+    console.log(`  Invalid option — keeping: ${label}.`);
+  }
+}
+
 async function promptVerbose(rl, settings) {
   const current = !!settings?.env?.PLUGIN_AUTO_QUIET;
   const label   = current ? 'quiet (labels hidden)' : 'verbose (labels shown)';
@@ -239,6 +276,7 @@ async function install() {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   try {
     await promptBackend(rl, settings);
+    await promptDenyBehavior(rl, settings);
     await promptVerbose(rl, settings);
   } finally {
     rl.close();
@@ -255,11 +293,15 @@ async function install() {
         : 'None (static rules only)';
 
   const verboseStatus = settings?.env?.PLUGIN_AUTO_QUIET ? 'quiet (labels hidden)' : 'verbose (labels shown)';
+  const denyStatus    = settings?.env?.PLUGIN_AUTO_DENY_DEFAULT
+    ? 'default (native Claude Code flow, "don\'t ask again" available)'
+    : 'ask — ⛔ warning with manual override [recommended]';
 
   console.log('\n[plugin-auto] Installation complete!');
   console.log('  Restart Claude Code to apply changes.\n');
-  console.log(`  AI backend:     ${backend}`);
+  console.log(`  AI backend:    ${backend}`);
   console.log(`  Display mode:  ${verboseStatus}`);
+  console.log(`  Deny mode:     ${denyStatus}`);
   console.log('  Behavior:');
   console.log('    allow  → Read, Glob, Grep, Write, Edit, ls, git status...');
   console.log('    ask    → git push, npm install, rm, docker run...');
