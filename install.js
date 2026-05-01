@@ -64,7 +64,7 @@ async function promptOllamaCloud(rl, settings) {
     const key = settings.env.OLLAMA_API_KEY;
     console.log(`  OLLAMA_API_KEY already configured (${key.substring(0, 12)}...).`);
     const replace = await ask(rl, '  Replace? [y/N]: ');
-    if (replace.toLowerCase() !== 'y' && replace !== '') return;
+    if (replace.toLowerCase() !== 'y') return;
   }
 
   const key = await ask(rl, '  Paste the OLLAMA_API_KEY and press Enter: ');
@@ -89,11 +89,11 @@ async function promptOllamaLocal(rl, settings) {
     console.log(`\n  Ollama already configured for local: ${settings.env.OLLAMA_URL} (model: ${settings.env.OLLAMA_MODEL || 'gemma3:27b-cloud'}).`);
     console.log('  Warning: OLLAMA_API_KEY is also set — it will be sent to any Ollama URL.');
     const replace = await ask(rl, '  Reconfigure? [y/N]: ');
-    if (replace.toLowerCase() !== 'y' && replace !== '') return;
+    if (replace.toLowerCase() !== 'y') return;
   } else if (hasOllamaUrl) {
     console.log(`\n  Ollama already configured: ${settings.env.OLLAMA_URL} (model: ${settings.env.OLLAMA_MODEL || 'gemma3:27b-cloud'}).`);
     const replace = await ask(rl, '  Reconfigure? [y/N]: ');
-    if (replace.toLowerCase() !== 'y' && replace !== '') return;
+    if (replace.toLowerCase() !== 'y') return;
   }
 
   const url   = await ask(rl, '\n  Ollama URL [enter for http://localhost:11434]: ');
@@ -113,7 +113,7 @@ async function promptAnthropic(rl, settings) {
     const key = settings.env.ANTHROPIC_API_KEY;
     console.log(`\n  ANTHROPIC_API_KEY already configured (${key.substring(0, 12)}...).`);
     const replace = await ask(rl, '  Replace? [y/N]: ');
-    if (replace.toLowerCase() !== 'y' && replace !== '') return;
+    if (replace.toLowerCase() !== 'y') return;
   }
   const key = await ask(rl, '\n  Paste the ANTHROPIC_API_KEY and press Enter: ');
   if (key) {
@@ -255,8 +255,8 @@ async function install() {
   if (!settings.hooks) settings.hooks = {};
   if (!settings.hooks.PreToolUse) settings.hooks.PreToolUse = [];
 
-  const alreadyInstalled = settings.hooks.PreToolUse.some((e) => e._id === HOOK_MARKER);
-  if (!alreadyInstalled) {
+  const existingEntry = settings.hooks.PreToolUse.find((e) => e._id === HOOK_MARKER);
+  if (!existingEntry) {
     settings.hooks.PreToolUse.unshift({
       _id: HOOK_MARKER,
       matcher: '.*',
@@ -268,6 +268,9 @@ async function install() {
       }],
     });
     console.log('[plugin-auto] Hook registered.');
+  } else if (existingEntry.hooks?.[0]?.command !== HOOK_COMMAND) {
+    existingEntry.hooks[0].command = HOOK_COMMAND;
+    console.log('[plugin-auto] Hook path updated.');
   } else {
     console.log('[plugin-auto] Hook already registered.');
   }
@@ -330,9 +333,17 @@ function uninstall() {
   if (settings.hooks.PreToolUse.length === 0) delete settings.hooks.PreToolUse;
   if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
 
+  // Remove plugin-specific env vars (AI backend keys are preserved).
+  if (settings.env) {
+    delete settings.env.PLUGIN_AUTO_QUIET;
+    delete settings.env.PLUGIN_AUTO_DENY_DEFAULT;
+    delete settings.env.PLUGIN_AUTO_VERBOSE; // legacy v1 key
+    if (Object.keys(settings.env).length === 0) delete settings.env;
+  }
+
   writeSettings(settings);
   console.log('[plugin-auto] Successfully removed.');
-  console.log('  Note: environment variables (ANTHROPIC_API_KEY, OLLAMA_URL...) were preserved.\n');
+  console.log('  Note: AI backend variables (ANTHROPIC_API_KEY, OLLAMA_URL, OLLAMA_MODEL, OLLAMA_API_KEY) were preserved.\n');
 }
 
 // ─── CLI ──────────────────────────────────────────────────────────────────────
