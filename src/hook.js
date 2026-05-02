@@ -509,17 +509,17 @@ async function main() {
           const reason = `[plugin-auto] ✓ allow — AI override (${ai.backend})${aiNote}`;
           if (verbose) process.stderr.write(reason + '\n');
           process.stdout.write(buildOutput('allow', reason) + '\n');
+        } else if (!canCallAi || ai === null || denyDefault) {
+          // No AI configured, or native flow requested — defer to Claude Code's native
+          // permission flow (supports "always allow" / "never ask again").
+          const note = !canCallAi ? 'no command' : denyDefault ? 'native flow' : 'no AI backend';
+          if (verbose) process.stderr.write(`[plugin-auto] → default — ${note}: ${preview(70)}\n`);
+          // No stdout output → Claude Code applies its own permission flow.
         } else if (ai?.verdict === 'unsafe') {
           const aiNote = ai.reason ? ` — ${ai.reason}` : '';
           const reason = `[plugin-auto] ⚠ ask — AI evaluated as unsafe (${ai.backend})${aiNote}`;
           if (verbose) process.stderr.write(reason + '\n');
           process.stdout.write(buildOutput('ask', reason) + '\n');
-        } else if (!canCallAi || ai === null) {
-          // No AI configured — defer to Claude Code's native permission flow
-          // (supports "always allow" / "never ask again").
-          const note = !canCallAi ? 'no command' : 'no AI backend';
-          if (verbose) process.stderr.write(`[plugin-auto] → default — ${note}: ${preview(70)}\n`);
-          // No stdout output → Claude Code applies its own permission flow.
         } else {
           // AI was configured but timed out or errored — surface the error via 'ask'
           // so the message is visible (default would swallow it).

@@ -11,7 +11,7 @@ function run(toolName, toolInput) {
     const out = execSync('node src/hook.js', {
       input: JSON.stringify({ tool_name: toolName, tool_input: toolInput }),
       encoding: 'utf-8',
-      env: { ...process.env, ANTHROPIC_API_KEY: '', OLLAMA_URL: '' },
+      env: { ...process.env, ANTHROPIC_API_KEY: '', OLLAMA_URL: '', PLUGIN_AUTO_DENY_DEFAULT: '', PLUGIN_AUTO_QUIET: '' },
     }).trim();
     if (!out) return 'default'; // no output → Claude Code's native permission flow
     return JSON.parse(out).hookSpecificOutput.permissionDecision;
