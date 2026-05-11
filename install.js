@@ -206,9 +206,11 @@ async function promptDenyBehavior(rl, settings) {
   if (answer === '2') {
     settings.env.PLUGIN_AUTO_DENY_DEFAULT = '1';
     console.log('  Deny mode: default — native flow, "don\'t ask again" available.');
-  } else if (answer === '1' || answer === '') {
+  } else if (answer === '1') {
     delete settings.env.PLUGIN_AUTO_DENY_DEFAULT;
     console.log('  Deny mode: ask — ⛔ warning with override option [recommended].');
+  } else if (answer === '') {
+    console.log(`  Keeping: ${label}.`);
   } else {
     console.log(`  Invalid option — keeping: ${label}.`);
   }
@@ -311,7 +313,7 @@ async function install() {
   console.log('    deny   → ⛔ prompt with manual override available\n');
 }
 
-function uninstall() {
+async function uninstall() {
   console.log('\n[plugin-auto] Removing hook from Claude Code...');
 
   const settings = readSettings();
@@ -333,23 +335,48 @@ function uninstall() {
   if (settings.hooks.PreToolUse.length === 0) delete settings.hooks.PreToolUse;
   if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
 
-  // Remove plugin-specific env vars (AI backend keys are preserved).
   if (settings.env) {
     delete settings.env.PLUGIN_AUTO_QUIET;
     delete settings.env.PLUGIN_AUTO_DENY_DEFAULT;
     delete settings.env.PLUGIN_AUTO_VERBOSE; // legacy v1 key
-    if (Object.keys(settings.env).length === 0) delete settings.env;
   }
 
+  const hasBackend = !!(
+    settings.env?.ANTHROPIC_API_KEY ||
+    settings.env?.OLLAMA_URL ||
+    settings.env?.OLLAMA_MODEL ||
+    settings.env?.OLLAMA_API_KEY
+  );
+
+  if (hasBackend) {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      const remove = await ask(rl, '  Also remove backend settings? [y/N]: ');
+      if (remove.toLowerCase() === 'y') {
+        delete settings.env.ANTHROPIC_API_KEY;
+        delete settings.env.OLLAMA_URL;
+        delete settings.env.OLLAMA_MODEL;
+        delete settings.env.OLLAMA_API_KEY;
+        console.log('  Backend settings removed.');
+      }
+    } finally {
+      rl.close();
+    }
+  }
+
+  if (settings.env && Object.keys(settings.env).length === 0) delete settings.env;
+
   writeSettings(settings);
-  console.log('[plugin-auto] Successfully removed.');
-  console.log('  Note: AI backend variables (ANTHROPIC_API_KEY, OLLAMA_URL, OLLAMA_MODEL, OLLAMA_API_KEY) were preserved.\n');
+  console.log('[plugin-auto] Successfully removed.\n');
 }
 
 // ─── CLI ──────────────────────────────────────────────────────────────────────
 const cmd = process.argv[2];
 if (cmd === 'uninstall') {
-  uninstall();
+  uninstall().catch((err) => {
+    console.error(`[plugin-auto] Error during uninstallation: ${err.message}`);
+    process.exit(1);
+  });
 } else {
   install().catch((err) => {
     console.error(`[plugin-auto] Error during installation: ${err.message}`);

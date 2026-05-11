@@ -142,7 +142,9 @@ The installer (`node install.js`) walks you through this choice with a full expl
 node install.js uninstall
 ```
 
-Environment variables (`ANTHROPIC_API_KEY`, `OLLAMA_URL`, etc.) are preserved and must be removed manually if desired.
+The uninstaller removes the hook from `settings.json` and all plugin-specific environment variables (`PLUGIN_AUTO_QUIET`, `PLUGIN_AUTO_DENY_DEFAULT`).
+
+If AI backend keys (`ANTHROPIC_API_KEY`, `OLLAMA_URL`, `OLLAMA_MODEL`, `OLLAMA_API_KEY`) are present, you will be asked whether to remove them as well. If you plan to reinstall later, you can keep them and skip reconfiguration.
 
 ## Tests
 
