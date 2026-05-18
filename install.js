@@ -177,6 +177,47 @@ async function promptBackend(rl, settings) {
   }
 }
 
+async function promptMode(rl, settings) {
+  const currentMode = (settings?.env?.PLUGIN_AUTO_MODE || '').toLowerCase();
+  const isPermissive = currentMode === 'permissive';
+  const label = isPermissive ? 'permissive' : 'strict [default]';
+
+  console.log('\n  ┌─ MODE (static rule strictness) ───────────────────────────────────┐');
+  console.log('  │                                                                  │');
+  console.log('  │  How strict the rule-based classifier should be before sending │');
+  console.log('  │  commands to the AI backend (if configured).                    │');
+  console.log('  │                                                                  │');
+  console.log('  │  (1) strict  [default]                                          │');
+  console.log('  │      All state-changing commands require confirmation or AI     │');
+  console.log('  │      approval. Safer, more friction.                            │');
+  console.log('  │                                                                  │');
+  console.log('  │  (2) permissive                                                 │');
+  console.log('  │      Common development operations (git commit/push, npm install, │');
+  console.log('  │      cp, mv, docker run, kubectl apply, etc.) are auto-approved.');
+  console.log('  │      Only clearly destructive actions (rm, privilege escalation, │');
+  console.log('  │      systemctl restart, remote execution, etc.) still require   │');
+  console.log('  │      confirmation. Less friction, relies more on AI for edge   │');
+  console.log('  │      cases.                                                      │');
+  console.log('  │                                                                  │');
+  console.log(`  │  Current: ${label.padEnd(50)}│`);
+  console.log('  └──────────────────────────────────────────────────────────────────┘\n');
+
+  const answer = await ask(rl, '  Choose mode [1/2, default: 1]: ');
+  if (!settings.env) settings.env = {};
+
+  if (answer === '2') {
+    settings.env.PLUGIN_AUTO_MODE = 'permissive';
+    console.log('  Mode: permissive — common dev ops auto-approved.');
+  } else if (answer === '1') {
+    delete settings.env.PLUGIN_AUTO_MODE;
+    console.log('  Mode: strict — state-changing ops require confirmation [default].');
+  } else if (answer === '') {
+    console.log(`  Keeping: ${label}.`);
+  } else {
+    console.log(`  Invalid option — keeping: ${label}.`);
+  }
+}
+
 async function promptDenyBehavior(rl, settings) {
   const currentIsDefault = !!settings?.env?.PLUGIN_AUTO_DENY_DEFAULT;
   const label = currentIsDefault ? 'default (native Claude Code flow)' : 'ask — ⛔ warning [recommended]';
@@ -280,6 +321,7 @@ async function install() {
   // ── 2. Configure AI backend and verbose mode ───────────────────────────────
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   try {
+    await promptMode(rl, settings);
     await promptBackend(rl, settings);
     await promptDenyBehavior(rl, settings);
     await promptVerbose(rl, settings);
@@ -301,11 +343,15 @@ async function install() {
   const denyStatus    = settings?.env?.PLUGIN_AUTO_DENY_DEFAULT
     ? 'default (native Claude Code flow, "don\'t ask again" available)'
     : 'ask — ⛔ warning with manual override [recommended]';
+  const modeStatus    = (settings?.env?.PLUGIN_AUTO_MODE || '').toLowerCase() === 'permissive'
+    ? 'permissive (common dev ops auto-approved)'
+    : 'strict (state-changing ops require confirmation)';
 
   console.log('\n[plugin-auto] Installation complete!');
   console.log('  Restart Claude Code to apply changes.\n');
   console.log(`  AI backend:    ${backend}`);
   console.log(`  Display mode:  ${verboseStatus}`);
+  console.log(`  Mode:          ${modeStatus}`);
   console.log(`  Deny mode:     ${denyStatus}`);
   console.log('  Behavior:');
   console.log('    allow  → Read, Glob, Grep, Write, Edit, ls, git status...');
@@ -339,6 +385,7 @@ async function uninstall() {
     delete settings.env.PLUGIN_AUTO_QUIET;
     delete settings.env.PLUGIN_AUTO_DENY_DEFAULT;
     delete settings.env.PLUGIN_AUTO_VERBOSE; // legacy v1 key
+    delete settings.env.PLUGIN_AUTO_MODE;
   }
 
   const hasBackend = !!(

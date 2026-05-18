@@ -58,6 +58,25 @@ Non-Bash tools (`Agent`, unknown MCP tools, etc.) that aren't in the always-allo
 `rm -rf /`, `rm -rf ~`, `curl … | bash`, `format C:`, `mkfs`, `dd of=/dev/sda`,
 `shutdown`, `reboot`, `Stop-Computer`, fork bomb, overwrite of `/etc/passwd` / `/etc/shadow`…
 
+## Mode (strict vs permissive)
+
+The installer lets you choose between two static-rule strictness levels:
+
+| Mode | Description |
+|------|-------------|
+| **strict** (default) | All state-changing commands require confirmation or AI approval. Maximum safety, more friction. |
+| **permissive** | Common development operations (`git commit/push`, `npm install`, `docker run`, `kubectl apply`, `cp`, `mv`, `sed -i`, etc.) are auto-approved by static rules. Only clearly destructive actions (`rm`, `sudo`, `systemctl restart`, `ssh`, etc.) still require confirmation. Less friction, relies more on AI for edge cases. |
+
+You can change the mode at any time by re-running `node install.js` or by setting `PLUGIN_AUTO_MODE` directly in `~/.claude/settings.json`:
+
+```json
+"env": {
+  "PLUGIN_AUTO_MODE": "permissive"
+}
+```
+
+When an AI backend is configured, commands classified as `ask` or `deny` are evaluated with a mode-aware prompt: in permissive mode, the AI is instructed to favor allowing routine development work and only block genuinely destructive or irreversible actions.
+
 ## Prerequisites
 
 - **Node.js ≥ 14** — no external npm dependencies required
@@ -70,8 +89,9 @@ node install.js
 
 The installer will:
 1. Register the `PreToolUse` hook in `~/.claude/settings.json`
-2. Let you choose an AI backend for smarter evaluations (optional)
-3. Let you enable verbose mode (shows classification on every command)
+2. Let you choose a mode: **strict** (default, more confirmations) or **permissive** (common dev ops auto-approved)
+3. Let you choose an AI backend for smarter evaluations (optional)
+4. Let you configure deny behavior and verbose mode
 
 **Restart Claude Code after installing to apply changes.**
 
@@ -142,7 +162,7 @@ The installer (`node install.js`) walks you through this choice with a full expl
 node install.js uninstall
 ```
 
-The uninstaller removes the hook from `settings.json` and all plugin-specific environment variables (`PLUGIN_AUTO_QUIET`, `PLUGIN_AUTO_DENY_DEFAULT`).
+The uninstaller removes the hook from `settings.json` and all plugin-specific environment variables (`PLUGIN_AUTO_QUIET`, `PLUGIN_AUTO_DENY_DEFAULT`, `PLUGIN_AUTO_MODE`).
 
 If AI backend keys (`ANTHROPIC_API_KEY`, `OLLAMA_URL`, `OLLAMA_MODEL`, `OLLAMA_API_KEY`) are present, you will be asked whether to remove them as well. If you plan to reinstall later, you can keep them and skip reconfiguration.
 
